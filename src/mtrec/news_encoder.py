@@ -1,12 +1,14 @@
 import torch
+from transformers import BertModel
+#TODO implement bert uncased from huggingface
 
 class NewsEncoder(torch.nn.Module):
     def __init__(self, tok_size, embedding_dim, num_classes, num_ner):
         super(NewsEncoder, self).__init__()
         #TODO: add configuration for the number of layers and hidden size
         self.cat_net = self.initialize_network(tok_size, num_classes)
-        self.ner_net = self.initialize_network(tok_size, num_ner)
-        self.bert = ... #TODO: Add BERT model
+        self.ner_net = ...
+        self.bert = BertModel.from_pretrained('bert-base-uncased')
 
     def initialize_network(self, input_size, output_size, hidden_size=124, num_layers=2, act_fn = torch.nn.ReLU()):
         if num_layers < 1:
@@ -34,7 +36,7 @@ class NewsEncoder(torch.nn.Module):
 
 
     def forward(self, x):
-        x = self.bert(x)
-        cat = self.forward_cat(x)
-        ner = self.forward_ner(x)
+        x = self.bert(**x)
+        cat = self.cat_net(x)
+        ner = self.ner_net(x)
         return x, cat, ner

@@ -43,3 +43,7 @@ src/ebrec/utils/_nlp.py
 src/ebrec/utils/_polars.py
 src/ebrec/utils/_python.py
 src/ebrec/utils/_torch.py
+src/mtrec/gradient_surgery.py
+src/mtrec/news_encoder.py
+src/mtrec/train.py
+src/mtrec/user_encoder.py
