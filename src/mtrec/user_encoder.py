@@ -15,8 +15,12 @@ class UserEncoder(torch.nn.Module):
         torch.nn.init.kaiming_uniform_(self.W, a=math.sqrt(5))
         torch.nn.init.kaiming_uniform_(self.q, a=math.sqrt(5))
 
+
     def calc_att(self, R):
-        return softmax(self.q * tanh(self.W @ R.T), axis=1)
+        return softmax((self.q.T @ tanh(self.W @ R.T)).squeeze())
+
+    # def calc_att(self, R):
+    #     return softmax(self.q * tanh(self.W @ R.T), axis=1)
     
     def forward(self, R_h):
         """
@@ -28,5 +32,6 @@ class UserEncoder(torch.nn.Module):
         Returns:
             torch.Tensor: User embedding tensor.
         """
-        A = self.calc_att(R_h)
-        return A * R_h
+        att = self.calc_att(R_h)
+        user_embeddings = att @ R_h.T
+        return user_embeddings.squeeze()
