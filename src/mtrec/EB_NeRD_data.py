@@ -4,12 +4,19 @@ import numpy as np
 from pathlib import Path
 import polars as pl
 
+from ebrec.utils._polars import slice_join_dataframes
+from ebrec.utils._behaviors import (
+    create_binary_labels_column,
+    sampling_strategy_wu2019,
+    truncate_history,
+)
+
 from torch.utils.data import Dataset
 
 class EB_NeRDDataset(Dataset):
     def __init__(self, tokenizer, split='train',**kwargs):
         '''
-            kwargs: max_length, hist_dim, cand_dim
+            kwargs: data_dir, history_size
         '''
         self.tokenizer = tokenizer
         self.split = split
@@ -21,38 +28,14 @@ class EB_NeRDDataset(Dataset):
         self.load_data()
     
     def __len__(self):
-        return len(self.log)
+        return len(self.df_behaviors)
 
     def __getitem__(self, index):
-        user = self.log[index]
-
-        history = user['history']
-        unlike = user['unlike']
-
-        hist_video = self.get_video(history)
-        # hist_video = self.normal_sample(hist_video, self.hist_dim)
-
-        unlike_video = self.get_video(unlike)
-        # unlike_video = self.normal_sample(unlike_video, self.cand_dim)
-
-        hist_video, cand_video = hist_video[1:], [hist_video[0]] + unlike_video
-        
-
-        hist_ids, hist_mask = self.encode(hist_video)
-        hist_ids = self.normal_sample(hist_ids, self.hist_dim)
-        hist_mask = self.normal_sample(hist_mask, self.hist_dim)
-        
-        cand_ids, cand_mask = self.encode(cand_video)
-        cand_ids = self.normal_sample(cand_ids, self.cand_dim)
-        cand_mask = self.normal_sample(cand_mask, self.cand_dim)
-
-        idx = list(range(self.cand_dim))
-        random.shuffle(idx)
-        cand_ids = [cand_ids[i] for i in idx]
-        cand_mask = [cand_mask[i] for i in idx]
-        label = [np.argmin(idx)]
-
-        return hist_ids, hist_mask, cand_ids, cand_mask, label
+        # Get the title and label
+        title = self.full_behaviors['title'].iloc[index]
+        label = ...
+  
+        return title, label
     
     def load_data(self):
         FULL_PATH = os.path.join(self.data_dir, self.split)
@@ -60,6 +43,24 @@ class EB_NeRDDataset(Dataset):
         # Load the data
         df_behaviors = pl.scan_parquet(os.path.join(FULL_PATH, 'behaviors.parquet'))
         df_history = pl.scan_parquet(os.path.join(FULL_PATH, 'history.parquet'))
+        df_history = df_history.pipe(
+                        truncate_history,
+                        column='article_id_fixed',
+                        history_size=self.history_size,
+                        padding_value=0,
+                        enable_warning=False,
+                    )
+        
+        self.full_behaviors = slice_join_dataframes(
+                df1=df_behaviors.collect(),
+                df2=df_history.collect(),
+                on='user_id',
+                how="left",
+            )
+        
+        # Load the article data
+        self.df_articles = pl.scan_parquet(os.path.join(self.data_dir, 'articles.parquet'))
+        
     
     
     # def encode(self, batch):

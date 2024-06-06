@@ -1,5 +1,6 @@
 dataset:
   data_dir: ../../data_demo
+  history_size: 30
 model:
   hidden: 768
 train:
