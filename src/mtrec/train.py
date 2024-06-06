@@ -1,19 +1,82 @@
-from pathlib import Path
-import polars as pl
+import os
+import torch
+import torch.nn as nn
 
-from ebrec.utils._descriptive_analysis import (
-    min_max_impression_time_behaviors, 
-    min_max_impression_time_history
-)
-from ebrec.utils._polars import slice_join_dataframes
-from ebrec.utils._behaviors import (
-    create_binary_labels_column,
-    sampling_strategy_wu2019,
-    truncate_history,
-)
-from ebrec.utils._constants import (
-    DEFAULT_HISTORY_ARTICLE_ID_COL,
-    DEFAULT_CLICKED_ARTICLES_COL,
-    DEFAULT_INVIEW_ARTICLES_COL,
-    DEFAULT_USER_COL
-)
+from transformers import BertTokenizer, BertModel
+from transformers import TrainingArguments
+import numpy as np
+#import torchmetrics
+
+from torch import optim
+from torch.optim import AdamW
+from tqdm.auto import tqdm
+from torch.utils.data import DataLoader, random_split
+from transformers import BertTokenizer, BertModel
+from transformers import TrainingArguments, Trainer
+# from transformers import get_schedulers
+# from datasets import load_dataset
+
+# from model import UserEmbedding, RankingScore
+# from helper import RecDataset
+
+from news_encoder import NewsEncoder
+from user_encoder import UserEncoder
+from EB_NeRD_data import EB_NeRDDataset
+
+import yaml
+with open('./config.yaml') as f:
+    cfg = yaml.safe_load(f)
+
+num_epochs = cfg['train']['num_epochs']
+bz_train = cfg['train']['bz_train']
+bz_val = cfg['train']['bz_val']
+os.makedirs(cfg['ckp_dir'], exist_ok=True)
+
+tokenizer= BertTokenizer.from_pretrained('bert-base-uncased')
+dataset_train = EB_NeRDDataset(tokenizer, split='train', **cfg['dataset'])
+
+
+# #train_dataset, test_dataset = random_split(dataset, [0.8, 0.2])
+
+# train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=bz_train, collate_fn=cat_nce, drop_last=True)    
+# val_dataloader = DataLoader(test_dataset, shuffle=False, batch_size=bz_val, collate_fn=cat_nce, drop_last=True)
+
+# device = cfg['train']['device']
+# model = RankingScore(cfg['model']['pretrain'], cfg['model']['hidden'], only_feature=True)
+# model.to(device=device)
+
+# optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=0.1)
+# # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+# scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=1e-3, total_steps=num_epochs, pct_start=0.1)
+
+# best = 0.0
+# entropy = torch.nn.CrossEntropyLoss()
+# for epoch in range(num_epochs):
+#     print(f'--- {epoch} / {num_epochs} ---')
+#     model.train()
+#     for batch in tqdm(train_dataloader):
+#         hist, mask_hist, cand, cand_hist, labels = (b.to(device = device) for b in batch)
+#         outputs = model(hist, mask_hist, cand, cand_hist, bz_train)
+#         outputs = outputs.squeeze(-1)
+#         loss = entropy(outputs, labels)
+        
+#         optimizer.zero_grad()
+#         loss.backward()
+#         optimizer.step()
+
+#     model.eval()
+#     with torch.no_grad():
+#         metric = torchmetrics.Accuracy(task="multiclass", num_classes=5)
+#         for batch in tqdm(val_dataloader):
+#             hist, mask_hist, cand, cand_hist, labels = (b.to(device = device) for b in batch)
+#             outputs = model(hist, mask_hist, cand, cand_hist, bz_val)
+#             outputs = outputs.squeeze(-1)
+
+#             pred = torch.argmax(outputs, axis=-1)
+#             metric(pred.cpu(), labels.cpu())
+#         acc = metric.compute().item()
+#         if acc > best:
+#             best = acc
+#             torch.save(model.state_dict(), os.path.join(cfg['ckp_dir'], f'best_{best}.pt'))
+#             print("save best: ", best)
+#     scheduler.step()

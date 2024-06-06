@@ -1,0 +1,9 @@
+dataset:
+  data_dir: ../../data_demo
+model:
+  hidden: 768
+train:
+  batch_size: 32
+  num_epochs: 30
+  learning_rate: 0.001
+ckp_dir: checkpoints
