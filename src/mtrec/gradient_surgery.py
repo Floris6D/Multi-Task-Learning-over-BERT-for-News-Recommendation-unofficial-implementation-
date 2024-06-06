@@ -6,11 +6,42 @@ import numpy as np
 import copy
 import random
 
+import matplotlib.pyplot as plt
+
+def apply_pca(points):
+    # Convert the list of points to a numpy array
+    points_array = np.array(points)
+
+    # Calculate the mean of the points
+    mean = np.mean(points_array, axis=0)
+
+    # Subtract the mean from the points
+    centered_points = points_array - mean
+
+    # Calculate the covariance matrix
+    covariance_matrix = np.cov(centered_points, rowvar=False)
+
+    # Perform eigen decomposition on the covariance matrix
+    eigenvalues, eigenvectors = np.linalg.eig(covariance_matrix)
+
+    # Sort the eigenvalues and eigenvectors in descending order
+    sorted_indices = np.argsort(eigenvalues)[::-1]
+    sorted_eigenvalues = eigenvalues[sorted_indices]
+    sorted_eigenvectors = eigenvectors[:, sorted_indices]
+
+    # Select the top 2 eigenvectors
+    selected_eigenvectors = sorted_eigenvectors[:, :2]
+
+    # Project the centered points onto the selected eigenvectors
+    projected_points = np.dot(centered_points, selected_eigenvectors)
+
+    return projected_points
 
 #TODO: Implement the PCGrad class as outlined in the paper
 class PCGrad():
-    def __init__(self, optimizer, reduction='mean'):
+    def __init__(self, optimizer, reduction='sum', lamb=0.3):
         self._optim, self._reduction = optimizer, reduction
+        self.lamb = lamb
         return
 
     @property
@@ -47,15 +78,23 @@ class PCGrad():
 
     def _project_conflicting(self, grads, has_grads, shapes=None):
         shared = torch.stack(has_grads).prod(0).bool()
-        pc_grad, num_task = copy.deepcopy(grads), len(grads)
-        for g_i in pc_grad:
-            random.shuffle(grads)
-            for g_j in grads:
-                g_i_g_j = torch.dot(g_i, g_j)
-                if g_i_g_j < 0:
-                    g_i -= (g_i_g_j) * g_j / (g_j.norm()**2)
+        ##TODO not sure how this handles batches
+        main_grad = grads[0]
+        aux_grads = torch.stack(grads[1:], axis=1)
+        aux_grad = self.lamb * aux_grads.sum(dim=1)
+        
+        dot_ma = torch.dot(main_grad, aux_grad)
+        if dot_ma< 0:
+            new_aux_grad = aux_grad - (dot_ma / torch.dot(main_grad, main_grad)) * main_grad
+            new_main_grad = main_grad - (dot_ma / torch.dot(aux_grad, aux_grad)) * aux_grad
+            main_grad = new_main_grad
+            aux_grad = new_aux_grad
+        
+        pc_grad = [main_grad , aux_grad] 
+
         merged_grad = torch.zeros_like(grads[0]).to(grads[0].device)
-        if self._reduction:
+
+        if self._reduction == "mean":
             merged_grad[shared] = torch.stack([g[shared]
                                            for g in pc_grad]).mean(dim=0)
         elif self._reduction == 'sum':
@@ -163,20 +202,22 @@ class PCGrad():
 # if __name__ == '__main__':
 
 #     # fully shared network test
-#     torch.manual_seed(4)
+#     print("fully shared network test")
+#     torch.manual_seed(6)
 #     x, y = torch.randn(2, 3), torch.randn(2, 4)
 #     net = TestNet()
 #     y_pred = net(x)
 #     pc_adam = PCGrad(optim.Adam(net.parameters()))
 #     pc_adam.zero_grad()
-#     loss1_fn, loss2_fn = nn.L1Loss(), nn.MSELoss()
-#     loss1, loss2 = loss1_fn(y_pred, y), loss2_fn(y_pred, y)
+#     loss1_fn, loss2_fn, loss3_fn = nn.L1Loss(), nn.MSELoss(), nn.SmoothL1Loss()
+#     loss1, loss2, loss3 = loss1_fn(y_pred, y), loss2_fn(y_pred, y), loss3_fn(y_pred, y)
 
-#     pc_adam.pc_backward([loss1, loss2])
+#     pc_adam.pc_backward([loss1, loss2, loss3])
 #     for p in net.parameters():
 #         print(p.grad)
 
 #     print('-' * 80)
+#     print("seperated shared network test")
 #     # seperated shared network test
 
 #     torch.manual_seed(4)
