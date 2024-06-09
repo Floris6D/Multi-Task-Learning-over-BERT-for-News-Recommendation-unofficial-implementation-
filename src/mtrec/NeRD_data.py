@@ -20,13 +20,15 @@ from ebrec.utils._articles import create_article_id_to_value_mapping, convert_te
 from torch.utils.data import Dataset
 
 class EB_NeRDDataset(Dataset):
-    def __init__(self, tokenizer, neg_sampling=False, split='train',**kwargs):
+    def __init__(self, tokenizer, neg_sampling=True, split='train',**kwargs):
         '''
             kwargs: data_dir, history_size, batch_size
         '''
+        #TODO: JE: Also make sure the dataloader works with negative sampling is False (doesn't work now because labels different sizes, see eval for better)
         self.tokenizer = tokenizer
         self.split = split
         self.neg_sampling = neg_sampling
+        self.eval_mode = False if split == 'train' else True
         # Contains path (see config.yaml) to the json file
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -64,21 +66,21 @@ class EB_NeRDDataset(Dataset):
             batch_y = np.array(batch_y.explode().to_list()).reshape(-1, 1)
             # =>
             his_input_title = repeat_by_list_values_from_matrix(
-                batch_X[self.history_column].to_list(),
+                batch_X['article_id_fixed'].to_list(),
                 matrix=self.lookup_article_matrix,
                 repeats=repeats,
             )
             # =>
             pred_input_title = self.lookup_article_matrix[
-                batch_X[self.inview_col].explode().to_list()
+                batch_X['article_ids_inview'].explode().to_list()
             ]
         else:
             batch_y = np.array(batch_y.to_list())
             his_input_title = self.lookup_article_matrix[
-                batch_X[self.history_column].to_list()
+                batch_X['article_id_fixed'].to_list()
             ]
             pred_input_title = self.lookup_article_matrix[
-                batch_X[self.inview_col].to_list()
+                batch_X['article_ids_inview'].to_list()
             ]
             pred_input_title = np.squeeze(pred_input_title, axis=2)
 
@@ -115,7 +117,7 @@ class EB_NeRDDataset(Dataset):
         
         # Now transform the data for negative sampling and add labels based on train, val, test
         if self.neg_sampling and self.split == 'train':
-            df_behaviors.select(COLUMNS).pipe(
+            df_behaviors = df_behaviors.select(COLUMNS).pipe(
                 sampling_strategy_wu2019,
                 npratio=self.npratio,
                 shuffle=True,
@@ -123,7 +125,7 @@ class EB_NeRDDataset(Dataset):
                 seed=123,
             ).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
         else:
-            df_behaviors.select(COLUMNS).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
+            df_behaviors = df_behaviors.select(COLUMNS).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
         
         # Store the behaviors in the class
         self.df_behaviors = df_behaviors
