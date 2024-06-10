@@ -1,0 +1,16 @@
+#test config
+
+news_encoder:   
+  tok_size : 16 #TODO link to bert instead of hardcode
+  embedding_dim : 16
+  num_classes : 3
+  num_ner : 4
+
+user_encoder:
+  input_size : 16 #TODO link to bert instead of hardcode
+  embedding_dim : 16
+
+training:
+  optimizer : adam
+  lr_user : 0.001
+  lr_news : 0.001
