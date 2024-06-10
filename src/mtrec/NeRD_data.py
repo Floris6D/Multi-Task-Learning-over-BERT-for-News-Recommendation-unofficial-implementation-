@@ -40,14 +40,18 @@ class EB_NeRDDataset(Dataset):
         self.tokenize_data()
         
         # Now create the X and y
+
         self.X = self.df_behaviors.drop('labels').with_columns(
             pl.col('article_ids_inview').list.len().alias('n_samples')
         )
         self.y = self.df_behaviors['labels']
         
+        # Lastly transform the data to get tokens and the right format for the model using the lookup tables
+        (self.his_input_title, self.pred_input_title), self.y = self.transform()
+        
     
     def __len__(self):
-        return int(np.ceil(len(self.X) / float(self.batch_size)))
+        return int(len(self.y))
 
     def __getitem__(self, idx):
         """
@@ -55,37 +59,10 @@ class EB_NeRDDataset(Dataset):
         pred_input_title:   (samples, npratio, document_dimension)
         batch_y:            (samples, npratio)
         """
-        batch_X = self.X[idx * self.batch_size : (idx + 1) * self.batch_size].pipe(
-            self.transform
-        )
-        batch_y = self.y[idx * self.batch_size : (idx + 1) * self.batch_size]
-        # =>
-        if self.eval_mode:
-            repeats = np.array(batch_X["n_samples"])
-            # =>
-            batch_y = np.array(batch_y.explode().to_list()).reshape(-1, 1)
-            # =>
-            his_input_title = repeat_by_list_values_from_matrix(
-                batch_X['article_id_fixed'].to_list(),
-                matrix=self.lookup_article_matrix,
-                repeats=repeats,
-            )
-            # =>
-            pred_input_title = self.lookup_article_matrix[
-                batch_X['article_ids_inview'].explode().to_list()
-            ]
-        else:
-            batch_y = np.array(batch_y.to_list())
-            his_input_title = self.lookup_article_matrix[
-                batch_X['article_id_fixed'].to_list()
-            ]
-            pred_input_title = self.lookup_article_matrix[
-                batch_X['article_ids_inview'].to_list()
-            ]
-            pred_input_title = np.squeeze(pred_input_title, axis=2)
+        x = (self.his_input_title[idx], self.pred_input_title[idx])
+        y = self.y[idx]
+        return x, y
 
-        his_input_title = np.squeeze(his_input_title, axis=2)
-        return (his_input_title, pred_input_title), batch_y
     
     def load_data(self):
         FULL_PATH = os.path.join(self.data_dir, self.split)
@@ -148,8 +125,9 @@ class EB_NeRDDataset(Dataset):
         self.unknown_index = [0]
         
         
-    def transform(self, df: pl.DataFrame) -> pl.DataFrame:
-        return df.pipe(
+    def transform(self):
+        # Map the article ids to the lookup table
+        self.X = self.X.pipe(
             map_list_article_id_to_value,
             behaviors_column='article_id_fixed',
             mapping=self.lookup_article_index,
@@ -162,6 +140,34 @@ class EB_NeRDDataset(Dataset):
             fill_nulls=self.unknown_index,
             drop_nulls=False,
         )
+        
+        if self.eval_mode:
+            repeats = np.array(self.X["n_samples"])
+            # =>
+            self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
+            # =>
+            his_input_title = repeat_by_list_values_from_matrix(
+                self.X['article_id_fixed'].to_list(),
+                matrix=self.lookup_article_matrix,
+                repeats=repeats,
+            )
+            # =>
+            pred_input_title = self.lookup_article_matrix[
+                self.X['article_ids_inview'].explode().to_list()
+            ]
+        else:
+            self.y = np.array(self.y.to_list())
+            his_input_title = self.lookup_article_matrix[
+                self.X['article_id_fixed'].to_list()
+            ]
+            pred_input_title = self.lookup_article_matrix[
+                self.X['article_ids_inview'].to_list()
+            ]
+            pred_input_title = np.squeeze(pred_input_title, axis=2)
+
+        his_input_title = np.squeeze(his_input_title, axis=2)
+        
+        return (his_input_title, pred_input_title), self.y
         
         
     
