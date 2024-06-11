@@ -29,7 +29,7 @@ def cosine_sim(user_embedding, news_embedding):
     scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2)
     return scores
 
-def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cosine_sim,
+def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cosine_sim,
           criterion: nn.Module = nn.CrossEntropyLoss(),  device:str = "cpu", save_dir:str = "saved_models"):
     """
     Function to train the model on the given dataset.
@@ -44,22 +44,24 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, sco
         dataloader_val (torch.utils.data.DataLoader): The dataloader for the validation dataset.
         device (torch.device): The device to be used for training.
     """
-    news_encoder.train()
-    user_encoder.train()
+    #initialize optimizer
+    params = [
+        {"params": [user_encoder.W,  user_encoder.q],   "lr": cfg["lr_user"]},  # Parameters of the linear layer in user encoder
+        {"params": list(news_encoder.cat_net.parameters()) + list(news_encoder.ner_net.parameters()),
+                   "lr": cfg["lr_news"]},  # Parameters of the linear layer in news encoder
+        # {"params": user_encoder.bert.parameters(), "lr": cfg["lr_bert"]},  # Parameters of BERT in user encoder
+        {"params": news_encoder.bert.parameters(), "lr": cfg["lr_bert"]}  # Parameters of BERT in news encoder
+    ]
+
     if cfg["optimizer"] == "adam":
-        optimizer = torch.optim.Adam([
-            {'params': news_encoder.parameters(), 'lr': cfg["lr_news"]},
-            {'params': user_encoder.parameters(), 'lr': cfg["lr_user"]}
-        ])
+        optimizer = torch.optim.Adam(params)
     elif cfg["optimizer"] == "sgd":
-        optimizer = torch.optim.SGD([
-            {'params': news_encoder.parameters(), 'lr': cfg["lr_news"]},
-            {'params': user_encoder.parameters(), 'lr': cfg["lr_user"]}
-            ])
+        optimizer = torch.optim.SGD(params)
     else:
         print("Invalid optimizer <{}>.".format(optimizer))
         return
     
+    #initialize to track best
     total_loss = 0
     best_loss = float('inf')
     best_user_encoder, best_news_encoder = None, None
@@ -72,6 +74,8 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, sco
     try: #training can be interrupted by catching KeyboardInterrupt
         #training
         for epoch in range(cfg['epochs']):
+            news_encoder.train()
+            user_encoder.train()
             for data in dataloader_train:
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask) , labels = data

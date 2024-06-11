@@ -22,7 +22,7 @@ def get_dataloaders(cfg):
     return (DataLoader(
                     EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split),
                     batch_size=cfg["trainer"]["batch_size"], shuffle=True) 
-                    for split in ['train', 'val', 'test']
+                    for split in ['train', 'validation'] #test
             )	
 
 def main():
@@ -30,29 +30,24 @@ def main():
     parser.add_argument('--file', default='test', help='Path to the configuration file')
     args = parser.parse_args()
     cfg = load_configuration(args.file)
-    
-    # uec = cfg['user_encoder']
-    # user_encoder = UserEncoder(uec['input_size'], uec['embedding_dim'])
-    # nec = cfg['news_encoder']
-    # news_encoder = NewsEncoder(nec['tok_size'], nec['embedding_dim'], 
-    #                            nec['num_classes'], nec['num_ner'])
-    
+        
     bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name'])
     user_encoder = UserEncoder(**cfg['user_encoder'], bert=bert)
     news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert)
     
-    (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
+    # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
+    (dataloader_train, dataloader_val) = get_dataloaders(cfg)
 
     
 
-    user_encoder, news_encoder = train(user_encoder, 
-                                       news_encoder, 
-                                       dataloader_train, 
-                                       dataloader_val, 
-                                       cfg["trainer"])
-    results = test(news_encoder,
-                   user_encoder, 
-                   dataloader_test)
+    user_encoder, news_encoder = train(user_encoder     = user_encoder, 
+                                       news_encoder     = news_encoder, 
+                                       dataloader_train = dataloader_train, 
+                                       dataloader_val   = dataloader_val, 
+                                       cfg              = cfg["trainer"])
+    # results = test(news_encoder,
+    #                user_encoder, 
+    #                dataloader_test)
 
 if __name__ == "__main__":
     main()
