@@ -23,6 +23,9 @@ class EB_NeRDDataset(Dataset):
     def __init__(self, tokenizer, neg_sampling=True, split='train',**kwargs):
         '''
             kwargs: data_dir, history_size, batch_size
+            
+            return (his_input_title, pred_input_title), y which is
+            the tokenized history and the tokenized articles in the inview list together with the labels which is the click or not click based on the inview list
         '''
         #TODO: JE: Also make sure the dataloader works with negative sampling is False (doesn't work now because labels different sizes, see eval for better)
         self.tokenizer = tokenizer
@@ -33,17 +36,17 @@ class EB_NeRDDataset(Dataset):
         for k, v in kwargs.items():
             setattr(self, k, v)
             
-        # Now load the data
-        self.load_data()
+        # Now load the data (article_id_fixed is the history, generated using truncate history)
+        COLUMNS = ['user_id', 'article_id_fixed', 'article_ids_inview', 'article_ids_clicked', 'impression_id']
+        self.load_data(COLUMNS)
         
         # Now tokenize the data and create the lookup tables
         self.tokenize_data()
         
         # Now create the X and y
-
         self.X = self.df_behaviors.drop('labels').with_columns(
             pl.col('article_ids_inview').list.len().alias('n_samples')
-        )
+        ) #Drop labels and add n_samples (which is the number of articles in the inview list)
         self.y = self.df_behaviors['labels']
         
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
@@ -64,7 +67,7 @@ class EB_NeRDDataset(Dataset):
         return x, y
 
     
-    def load_data(self):
+    def load_data(self, COLUMNS):
         FULL_PATH = os.path.join(self.data_dir, self.split)
         
         # Load the data
@@ -90,7 +93,6 @@ class EB_NeRDDataset(Dataset):
                 how='left',
             )
         )
-        COLUMNS = ['user_id', 'article_id_fixed', 'article_ids_inview', 'article_ids_clicked', 'impression_id']
         
         # Now transform the data for negative sampling and add labels based on train, val, test
         if self.neg_sampling and self.split == 'train':
@@ -115,7 +117,7 @@ class EB_NeRDDataset(Dataset):
         #TODO: JE: Maybe also add subtitle for prediction
         #df_articles, cat_cal = concat_str_columns(df = self.df_articles, columns=['subtitle', 'title'])
         
-        # This add the bert encoding to the df
+        # This add the bert tokenization to the df
         self.df_articles, token_col_title = convert_text2encoding_with_transformers(self.df_articles, self.tokenizer, column='title', max_length=self.max_title_length)
         # Now create lookup tables
         article_mapping = create_article_id_to_value_mapping(df=self.df_articles, value_col=token_col_title)
@@ -126,7 +128,7 @@ class EB_NeRDDataset(Dataset):
         
         
     def transform(self):
-        # Map the article ids to the lookup table
+        # Map the article ids to the lookup table (not sure what this value should represent, I think it's the tokenized title)
         self.X = self.X.pipe(
             map_list_article_id_to_value,
             behaviors_column='article_id_fixed',
