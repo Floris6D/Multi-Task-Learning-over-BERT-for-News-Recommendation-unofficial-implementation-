@@ -14,6 +14,20 @@ from metrics._ranking import mrr_score
 from metrics._ranking import ndcg_score
 from metrics._classification import auc_score_custom
 
+def cross_product(user_embedding, news_embedding):
+    """
+    Function to calculate the cross product of the user and news embeddings.
+    
+    Args:
+        user_embedding (torch.Tensor): Batch_size * embedding_dimension tensor of user embeddings.
+        news_embedding (torch.Tensor): Batch_size * N * embedding_dimension tensor of news embeddings.
+        
+    Returns:
+        torch.Tensor: Batch_size * N tensor of scores.
+    """
+    scores = user_embedding.unsqueeze(1)* news_embedding
+    return scores
+
 def cosine_sim(user_embedding, news_embedding):
     """
     Function to calculate the cross product of the user and news embeddings.
@@ -78,16 +92,25 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             user_encoder.train()
             for data in dataloader_train:
                 # Get the data
-                (user_histories, user_mask, news_tokens, news_mask) , labels = data
+                # (user_histories, user_mask, news_tokens, news_mask) , labels = data
+                # user_histories = user_histories.to(device)
+                # user_mask = user_mask.to(device)
+                # news_tokens = news_tokens.to(device)
+                # news_mask = news_mask.to(device)
+
+
+                #BEGIN temp
+                (user_histories, news_tokens) , labels = data
                 user_histories = user_histories.to(device)
-                user_mask = user_mask.to(device)
+                user_mask = False
                 news_tokens = news_tokens.to(device)
-                news_mask = news_mask.to(device)
+                news_mask = False
+                ##END temp
                 labels = labels.to(device)
                 optimizer.zero_grad()
                 # Get the embeddings
                 user_embeddings = user_encoder(user_histories, user_mask)
-                news_embeddings = news_encoder(news_tokens, news_mask)
+                news_embeddings, cat, ner = news_encoder(news_tokens, news_mask)
                 scores = scoring_function(user_embeddings, news_embeddings)
                 loss = criterion(scores, labels) ##TODO make criterion correct for ranking
                 loss.backward()
@@ -106,7 +129,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 news_mask = news_mask.to(device)
                 labels = labels.to(device)
                 user_embeddings = user_encoder(user_histories, user_mask)
-                news_embeddings = news_encoder(news_tokens, news_mask)
+                news_embeddings, cat, ner = news_encoder(news_tokens, news_mask)
                 scores = scoring_function(user_embeddings, news_embeddings)
                 loss = criterion(scores, labels)
                 total_loss_val += loss.item()

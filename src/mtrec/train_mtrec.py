@@ -22,8 +22,8 @@ def get_dataloaders(cfg):
     return (DataLoader(
                     EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split),
                     batch_size=cfg["trainer"]["batch_size"], shuffle=True) 
-                    for split in ['train', 'validation'] #test
-            )	
+                    for split in ['train', 'validation'] #TODO: add test, need to download
+                    )	
 
 def main():
     parser = argparse.ArgumentParser(description='Process some arguments.')
