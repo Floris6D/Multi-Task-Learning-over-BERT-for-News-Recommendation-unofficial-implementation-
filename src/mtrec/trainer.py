@@ -33,8 +33,8 @@ def test_cross_product():
     assert torch.all(actual_scores == expected_scores)
 
 
-def train(news_encoder, user_encoder, dataloader_train, dataloader_val, config, scoring_function:callable = cross_product,
-          criterion: nn.Module = nn.CrossEntropyLoss(),  device:str = "cpu"):
+def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cross_product,
+          criterion: nn.Module = nn.CrossEntropyLoss(),  device:str = "cpu", save_dir:str = "saved_models"):
     """
     Function to train the model on the given dataset.
     
@@ -50,14 +50,16 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, config, 
     """
     news_encoder.train()
     user_encoder.train()
-    if config["optimizer"] == "adam":
+    if cfg["optimizer"] == "adam":
         optimizer = torch.optim.Adam([
-            {'params': news_encoder.parameters(), 'lr': 0.001},
-            {'params': user_encoder.parameters(), 'lr': 0.0001}
+            {'params': news_encoder.parameters(), 'lr': cfg["lr_news"]},
+            {'params': user_encoder.parameters(), 'lr': cfg["lr_user"]}
         ])
-    elif config["optimizer"] == "sgd":
-        optimizer = torch.optim.SGD([{'params': news_encoder.parameters(), 'lr': config["lr_news"]},
-            {'params': user_encoder.parameters(), 'lr': config["lr_user"]}])
+    elif cfg["optimizer"] == "sgd":
+        optimizer = torch.optim.SGD([
+            {'params': news_encoder.parameters(), 'lr': cfg["lr_news"]},
+            {'params': user_encoder.parameters(), 'lr': cfg["lr_user"]}
+            ])
     else:
         print("Invalid optimizer <{}>.".format(optimizer))
         return
@@ -65,9 +67,15 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, config, 
     total_loss = 0
     best_loss = float('inf')
     best_user_encoder, best_news_encoder = None, None
-    create_save_dir = True
-    try:
-        for epoch in range(config['epochs']):
+    save_num = 0
+    while os.path.exists(save_dir+f'/run{save_num}'):
+        save_num += 1
+    save_path = save_dir+f'/run{save_num}'
+    os.makedirs(save_path)
+    print(f"Saving models to {save_path}")
+    try: #training can be interrupted by catching KeyboardInterrupt
+        #training
+        for epoch in range(cfg['epochs']):
             for data in dataloader_train:
                 user_histories, news, labels = data #TODO make compatible
                 user_histories = user_histories.to(device)
@@ -85,6 +93,7 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, config, 
             user_encoder.eval()
             news_encoder.eval()
             total_loss_val = 0
+            #validation
             for data in dataloader_val:
                 user_histories, news, labels = data #TODO make compatible
                 user_histories = user_histories.to(device)
@@ -95,18 +104,8 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, config, 
                 scores = scoring_function(user_embeddings, news_embeddings)
                 loss = criterion(scores, labels)
                 total_loss_val += loss.item()
-            if total_loss_val < best_loss:
-                if create_save_dir: #only run once
-                    if not os.path.exists('saved_models'):
-                        os.makedirs('saved_models')
-                    save_num = 0
-                    while os.path.exists(f'saved_models/run{save_num}'):
-                        save_num += 1
-                    save_path = f'saved_models/run{save_num}'
-                    os.makedirs(save_path)
-                    create_save_dir = False
-                    print(f"Saving models to {save_path}")
-
+            #saving best models
+            if total_loss_val < best_loss:                 
                 print("Saving model @{epoch}")
                 best_loss = total_loss_val
                 torch.save(user_encoder.state_dict(), save_path + '/user_encoder.pth')
