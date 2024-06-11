@@ -15,12 +15,14 @@ from ebrec.utils._python import (
     repeat_by_list_values_from_matrix,
     create_lookup_objects,
 )
-from ebrec.utils._articles import create_article_id_to_value_mapping, convert_text2encoding_with_transformers
+from ebrec.utils._articles import create_article_id_to_value_mapping
 
 from torch.utils.data import Dataset
 
+from transformers import AutoTokenizer
+
 class EB_NeRDDataset(Dataset):
-    def __init__(self, tokenizer, neg_sampling=True, split='train',**kwargs):
+    def __init__(self, tokenizer, wu_sampling=True, split='train',**kwargs):
         '''
             kwargs: data_dir, history_size, batch_size
             
@@ -30,7 +32,7 @@ class EB_NeRDDataset(Dataset):
         #TODO: JE: Also make sure the dataloader works with negative sampling is False (doesn't work now because labels different sizes, see eval for better)
         self.tokenizer = tokenizer
         self.split = split
-        self.neg_sampling = neg_sampling
+        self.wu_sampling = wu_sampling
         self.eval_mode = False if split == 'train' else True
         # Contains path (see config.yaml) to the json file
         for k, v in kwargs.items():
@@ -50,7 +52,7 @@ class EB_NeRDDataset(Dataset):
         self.y = self.df_behaviors['labels']
         
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
-        (self.his_input_title, self.pred_input_title), self.y = self.transform()
+        (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), self.y = self.transform()
         
     
     def __len__(self):
@@ -58,11 +60,13 @@ class EB_NeRDDataset(Dataset):
 
     def __getitem__(self, idx):
         """
-        his_input_title:    (samples, history_size, document_dimension)
-        pred_input_title:   (samples, npratio, document_dimension)
-        batch_y:            (samples, npratio)
+        his_input_title:        (samples, history_size, document_dimension)
+        mask_his_input_title:   (samples, history_size, document_dimension)
+        pred_input_title:       (samples, npratio, document_dimension)
+        mask_pred_input_title:  (samples, npratio, document_dimension)
+        batch_y:                (samples, npratio)
         """
-        x = (self.his_input_title[idx], self.pred_input_title[idx])
+        x = (self.his_input_title[idx], self.mask_his_input_title[idx], self.pred_input_title[idx], self.mask_pred_input_title[idx])
         y = self.y[idx]
         return x, y
 
@@ -95,7 +99,7 @@ class EB_NeRDDataset(Dataset):
         )
         
         # Now transform the data for negative sampling and add labels based on train, val, test
-        if self.neg_sampling and self.split == 'train':
+        if self.wu_sampling and self.split == 'train':
             df_behaviors = df_behaviors.select(COLUMNS).pipe(
                 sampling_strategy_wu2019,
                 npratio=self.npratio,
@@ -118,11 +122,16 @@ class EB_NeRDDataset(Dataset):
         #df_articles, cat_cal = concat_str_columns(df = self.df_articles, columns=['subtitle', 'title'])
         
         # This add the bert tokenization to the df
-        self.df_articles, token_col_title = convert_text2encoding_with_transformers(self.df_articles, self.tokenizer, column='title', max_length=self.max_title_length)
+        self.df_articles, col_name_token_title, col_name_mask = convert_text2encoding_with_transformers_tokenizers(self.df_articles, self.tokenizer, column='title', max_length=self.max_title_length)
         # Now create lookup tables
-        article_mapping = create_article_id_to_value_mapping(df=self.df_articles, value_col=token_col_title)
+        article_mapping_token = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_token_title, article_col='article_id')
+        article_mapping_mask = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_mask, article_col='article_id')
+        
         self.lookup_article_index, self.lookup_article_matrix = create_lookup_objects(
-            article_mapping, unknown_representation='zeros'
+            article_mapping_token, unknown_representation='zeros'
+        )
+        self.lookup_article_index_mask, self.lookup_article_matrix_mask = create_lookup_objects(
+            article_mapping_mask, unknown_representation='zeros'
         )
         self.unknown_index = [0]
         
@@ -143,7 +152,7 @@ class EB_NeRDDataset(Dataset):
             drop_nulls=False,
         )
         
-        if self.eval_mode or not self.neg_sampling:
+        if self.eval_mode or not self.wu_sampling:
             repeats = np.array(self.X["n_samples"])
             # =>
             self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
@@ -154,7 +163,16 @@ class EB_NeRDDataset(Dataset):
                 repeats=repeats,
             )
             # =>
+            mask_his_input_title = repeat_by_list_values_from_matrix(
+                self.X['article_id_fixed'].to_list(),
+                matrix=self.lookup_article_matrix_mask,
+                repeats=repeats,
+            )
+            # =>
             pred_input_title = self.lookup_article_matrix[
+                self.X['article_ids_inview'].explode().to_list()
+            ]
+            mask_pred_input_title = self.lookup_article_matrix_mask[
                 self.X['article_ids_inview'].explode().to_list()
             ]
         else:
@@ -162,16 +180,77 @@ class EB_NeRDDataset(Dataset):
             his_input_title = self.lookup_article_matrix[
                 self.X['article_id_fixed'].to_list()
             ]
+            mask_his_input_title = self.lookup_article_matrix_mask[
+                self.X['article_id_fixed'].to_list()
+            ]
             pred_input_title = self.lookup_article_matrix[
                 self.X['article_ids_inview'].to_list()
             ]
+            mask_pred_input_title = self.lookup_article_matrix_mask[
+                self.X['article_ids_inview'].to_list()
+            ]
             pred_input_title = np.squeeze(pred_input_title, axis=2)
+            mask_pred_input_title = np.squeeze(mask_pred_input_title, axis=2)
 
         his_input_title = np.squeeze(his_input_title, axis=2)
+        mask_his_input_title = np.squeeze(mask_his_input_title, axis=2)
         
-        return (his_input_title, pred_input_title), self.y
+        return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), self.y
         
-        
+def convert_text2encoding_with_transformers_tokenizers(
+    df: pl.DataFrame,
+    tokenizer: AutoTokenizer,
+    column: str,
+    max_length: int = None,
+) -> pl.DataFrame:
+    """Converts text in a specified DataFrame column to tokens using a provided tokenizer.
+    Args:
+        df (pl.DataFrame): The input DataFrame containing the text column.
+        tokenizer (AutoTokenizer): The tokenizer to use for encoding the text. (from transformers import AutoTokenizer)
+        column (str): The name of the column containing the text.
+        max_length (int, optional): The maximum length of the encoded tokens. Defaults to None.
+    Returns:
+        pl.DataFrame: A new DataFrame with an additional column containing the encoded tokens.
+    Example:
+    >>> from transformers import AutoTokenizer
+    >>> import polars as pl
+    >>> df = pl.DataFrame({
+            'text': ['This is a test.', 'Another test string.', 'Yet another one.']
+        })
+    >>> tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+    >>> encoded_df, new_column = convert_text2encoding_with_transformers(df, tokenizer, 'text', max_length=20)
+    >>> print(encoded_df)
+        shape: (3, 2)
+        ┌──────────────────────┬───────────────────────────────┐
+        │ text                 ┆ text_encode_bert-base-uncased │
+        │ ---                  ┆ ---                           │
+        │ str                  ┆ list[i64]                     │
+        ╞══════════════════════╪═══════════════════════════════╡
+        │ This is a test.      ┆ [2023, 2003, … 0]             │
+        │ Another test string. ┆ [2178, 3231, … 0]             │
+        │ Yet another one.     ┆ [2664, 2178, … 0]             │
+        └──────────────────────┴───────────────────────────────┘
+    >>> print(new_column)
+        text_encode_bert-base-uncased
+    """
+    text = df[column].to_list()
+    # set columns
+    new_column_id = f"{column}_encode_{tokenizer.name_or_path}"
+    new_column_mask = f"{column}_mask_{tokenizer.name_or_path}"
+    # If 'max_length' is provided then set it, else encode each string its original length
+    padding = "max_length" if max_length else False
+    encoded_tokens = tokenizer(
+        text,
+        add_special_tokens=False,
+        padding=padding,
+        max_length=max_length,
+        truncation=True,
+    )
+    input_ids_series = encoded_tokens['input_ids']
+    token_masks = encoded_tokens['attention_mask']
+    df = df.with_columns(pl.Series(new_column_id, input_ids_series))
+    df = df.with_columns(pl.Series(new_column_mask, token_masks))
+    return df, new_column_id, new_column_mask
     
     
     # def encode(self, batch):
