@@ -73,7 +73,7 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, sco
         #training
         for epoch in range(cfg['epochs']):
             for data in dataloader_train:
-                user_histories, news, labels = data #TODO make compatible
+                (user_histories, news) , labels = data
                 user_histories = user_histories.to(device)
                 news = news.to(device)
                 labels = labels.to(device)
@@ -91,7 +91,7 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, sco
             total_loss_val = 0
             #validation
             for data in dataloader_val:
-                user_histories, news, labels = data #TODO make compatible
+                (user_histories, news) , labels = data
                 user_histories = user_histories.to(device)
                 news = news.to(device)
                 labels = labels.to(device)
@@ -153,7 +153,7 @@ def test(news_encoder, user_encoder, dataloader_test,
     }
     i = 0
     for data in dataloader_test:
-        user_histories, news, labels = data #TODO make compatible
+        (user_histories, news) , labels = data
         i+=user_histories.shape(0)
         user_histories = user_histories.to(device)
         news = news.to(device)
