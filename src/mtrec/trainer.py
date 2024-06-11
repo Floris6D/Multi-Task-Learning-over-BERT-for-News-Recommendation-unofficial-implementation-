@@ -1,9 +1,20 @@
 import torch
 import torch.nn as nn
 import os
+import sys
 import copy
 
-def cross_product(user_embedding, news_embedding):
+# Add the ebrec/evaluation directory to sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.abspath(os.path.join(current_dir, '..', 'ebrec', 'evaluation'))
+sys.path.insert(0, parent_dir)
+
+# Import the required functions from the metrics package
+from metrics._ranking import mrr_score
+from metrics._ranking import ndcg_score
+from metrics._classification import auc_score_custom
+
+def cosine_sim(user_embedding, news_embedding):
     """
     Function to calculate the cross product of the user and news embeddings.
     
@@ -15,25 +26,10 @@ def cross_product(user_embedding, news_embedding):
         torch.Tensor: Batch_size * N tensor of scores.
     """
     # scores = user_embedding.unsqueeze(1)* news_embedding
-    scores = torch.sum(user_embedding.unsqueeze(1)* news_embedding, axis = 2)
+    scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2)
     return scores
 
-
-def test_cross_product():
-    # Define input tensors
-    user_embedding = torch.tensor([[1, 2, 3], [4, 5, 6]])
-    news_embedding = torch.tensor([[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]])
-    
-    # Calculate expected output
-    expected_scores = torch.tensor([[14, 32], [122, 167]])
-    
-    # Calculate actual output
-    actual_scores = cross_product(user_embedding, news_embedding)
-    # Check if the actual output matches the expected output
-    assert torch.all(actual_scores == expected_scores)
-
-
-def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cross_product,
+def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cosine_sim,
           criterion: nn.Module = nn.CrossEntropyLoss(),  device:str = "cpu", save_dir:str = "saved_models"):
     """
     Function to train the model on the given dataset.
@@ -119,9 +115,26 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, sco
     return best_user_encoder, best_news_encoder
 
     
+def get_metrics(y_true, y_pred):
+    """
+    Function to calculate the metrics for the given true and predicted labels.
+    
+    Args:
+        y_true (torch.Tensor): The true labels.
+        y_pred (torch.Tensor): The predicted labels.
+        
+    Returns:
+        dict: A dictionary containing the calculated metrics.
+    """
+    metrics = {
+        'mrr_score': mrr_score(y_true, y_pred),
+        'ndcg_score': ndcg_score(y_true, y_pred),
+        'auc_score_custom': auc_score_custom(y_true, y_pred)
+    }
+    return metrics
 
 def test(news_encoder, user_encoder, dataloader_test,
-          scoring_function:callable = cross_product, device:str = "cpu"):
+          scoring_function:callable = cosine_sim, device:str = "cpu"):
     """
     Function to test the model on the given dataset.
     
@@ -133,16 +146,27 @@ def test(news_encoder, user_encoder, dataloader_test,
     """
     user_encoder.eval()
     news_encoder.eval()
-    metrics = {}
+    metrics_total = {
+        'mrr_score': 0,
+        'ndcg_score': 0,
+        'auc_score_custom': 0
+    }
+    i = 0
     for data in dataloader_test:
         user_histories, news, labels = data #TODO make compatible
+        i+=user_histories.shape(0)
         user_histories = user_histories.to(device)
         news = news.to(device)
         labels = labels.to(device)
         user_embeddings = user_encoder(user_histories)
         news_embeddings = news_encoder(news)
         scores = scoring_function(user_embeddings, news_embeddings)
-        #TODO: calc metrics
+        metrics = get_metrics(labels, scores)
+        for key in metrics_total:
+            metrics_total[key] += metrics[key]
+    
+    for key in metrics_total:
+        metrics_total[key] /= i
     
     for key, value in metrics.items():
         print(f"{key:<5}: {value:.3f}")
