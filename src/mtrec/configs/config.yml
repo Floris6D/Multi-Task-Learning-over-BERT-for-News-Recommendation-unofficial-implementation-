@@ -2,11 +2,11 @@ dataset:
   data_dir: ../../data_demo
   history_size: 30
   max_title_length: 30
-  batch_size: 32
   npratio: 4
-  dataset_fraction: 0.01
+  dataset_fraction: 1
 model:
   hidden: 768
+  batch_size: 32
   pretrained_model_name: bert-base-uncased
 train:
   num_epochs: 30

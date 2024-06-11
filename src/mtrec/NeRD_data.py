@@ -143,7 +143,7 @@ class EB_NeRDDataset(Dataset):
             drop_nulls=False,
         )
         
-        if self.eval_mode:
+        if self.eval_mode or not self.neg_sampling:
             repeats = np.array(self.X["n_samples"])
             # =>
             self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
