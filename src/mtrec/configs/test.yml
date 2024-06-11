@@ -1,15 +1,13 @@
 #test config
 news_encoder:   
-  tok_size : 16 #TODO link to bert instead of hardcode
+  input_size : 768 #TODO link to bert instead of hardcode
   embedding_dim : 16
   num_classes : 3
   num_ner : 4
 
 user_encoder:
-  input_size : 16 #TODO link to bert instead of hardcode
+  input_size : 768 #TODO link to bert instead of hardcode
   embedding_dim : 16
-
-
 
 trainer:
   optimizer : adam
@@ -21,7 +19,6 @@ dataset:
   data_dir: ../../data_demo
   history_size: 30
   max_title_length: 30
-  #batch_size: 32
   npratio: 4
   dataset_fraction: 0.01
 

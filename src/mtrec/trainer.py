@@ -73,13 +73,17 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, sco
         #training
         for epoch in range(cfg['epochs']):
             for data in dataloader_train:
-                (user_histories, news) , labels = data
+                # Get the data
+                (user_histories, user_mask, news_tokens, news_mask) , labels = data
                 user_histories = user_histories.to(device)
-                news = news.to(device)
+                user_mask = user_mask.to(device)
+                news_tokens = news_tokens.to(device)
+                news_mask = news_mask.to(device)
                 labels = labels.to(device)
                 optimizer.zero_grad()
-                user_embeddings = user_encoder(user_histories)
-                news_embeddings = news_encoder(news)
+                # Get the embeddings
+                user_embeddings = user_encoder(user_histories, user_mask)
+                news_embeddings = news_encoder(news_tokens, news_mask)
                 scores = scoring_function(user_embeddings, news_embeddings)
                 loss = criterion(scores, labels) ##TODO make criterion correct for ranking
                 loss.backward()
@@ -91,12 +95,14 @@ def train(news_encoder, user_encoder, dataloader_train, dataloader_val, cfg, sco
             total_loss_val = 0
             #validation
             for data in dataloader_val:
-                (user_histories, news) , labels = data
+                (user_histories, user_mask, news_tokens, news_mask) , labels = data
                 user_histories = user_histories.to(device)
-                news = news.to(device)
+                user_mask = user_mask.to(device)
+                news_tokens = news_tokens.to(device)
+                news_mask = news_mask.to(device)
                 labels = labels.to(device)
-                user_embeddings = user_encoder(user_histories)
-                news_embeddings = news_encoder(news)
+                user_embeddings = user_encoder(user_histories, user_mask)
+                news_embeddings = news_encoder(news_tokens, news_mask)
                 scores = scoring_function(user_embeddings, news_embeddings)
                 loss = criterion(scores, labels)
                 total_loss_val += loss.item()
@@ -153,14 +159,19 @@ def test(news_encoder, user_encoder, dataloader_test,
     }
     i = 0
     for data in dataloader_test:
-        (user_histories, news) , labels = data
-        i+=user_histories.shape(0)
+        # Get the data
+        (user_histories, user_mask, news_tokens, news_mask) , labels = data
         user_histories = user_histories.to(device)
-        news = news.to(device)
+        user_mask = user_mask.to(device)
+        news_tokens = news_tokens.to(device)
+        news_mask = news_mask.to(device)
         labels = labels.to(device)
+        # Get the embeddings
         user_embeddings = user_encoder(user_histories)
-        news_embeddings = news_encoder(news)
+        news_embeddings = news_encoder(news_tokens, news_mask)
+        # Get the scores
         scores = scoring_function(user_embeddings, news_embeddings)
+        # Calculate the metrics
         metrics = get_metrics(labels, scores)
         for key in metrics_total:
             metrics_total[key] += metrics[key]

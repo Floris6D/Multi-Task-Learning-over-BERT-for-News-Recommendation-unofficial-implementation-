@@ -5,7 +5,7 @@ import yaml
 #get data
 from NeRD_data import EB_NeRDDataset
 from torch.utils.data import DataLoader
-from transformers import BertTokenizer
+from transformers import BertTokenizer, BertModel
 
 from user_encoder import UserEncoder
 from news_encoder import NewsEncoder
@@ -18,7 +18,6 @@ def load_configuration(config):
     return configuration
 
 def get_dataloaders(cfg):
-
     tokenizer = BertTokenizer.from_pretrained(cfg['model']['pretrained_model_name'])
     return (DataLoader(
                     EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split),
@@ -37,11 +36,14 @@ def main():
     # nec = cfg['news_encoder']
     # news_encoder = NewsEncoder(nec['tok_size'], nec['embedding_dim'], 
     #                            nec['num_classes'], nec['num_ner'])
-
-    user_encoder = UserEncoder(**cfg['user_encoder'])
-    news_encoder = NewsEncoder(**cfg['news_encoder'])
+    
+    bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name'])
+    user_encoder = UserEncoder(**cfg['user_encoder'], bert=bert)
+    news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert)
     
     (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
+
+    
 
     user_encoder, news_encoder = train(user_encoder, 
                                        news_encoder, 
