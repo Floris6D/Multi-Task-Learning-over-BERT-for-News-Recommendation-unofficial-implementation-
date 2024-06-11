@@ -15,11 +15,11 @@ trainer:
   lr_user : 0.001
   lr_news : 0.001
   lr_bert : 0.0001
-  batch_size: 32
+  batch_size: 8
 
 dataset:
   data_dir: ../../data_demo
-  history_size: 30
+  history_size: 20
   max_title_length: 30
   npratio: 4
   dataset_fraction: 0.01

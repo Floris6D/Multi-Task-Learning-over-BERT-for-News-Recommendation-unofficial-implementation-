@@ -36,11 +36,10 @@ class NewsEncoder(torch.nn.Module):
     def forward(self, tokens, mask = False):
         bs, n, ts = tokens.shape
         tokens = tokens.reshape(bs*n, ts)
-        if mask:
-            x = self.bert(tokens, mask)
-        else:
-            x = self.bert(tokens)
+        mask = mask.reshape(bs*n, ts)
+        x = self.bert(tokens, mask)
         last_hidden_state = x.last_hidden_state
         cat = self.forward_cat(last_hidden_state)
         ner = self.forward_ner(last_hidden_state).reshape(bs, n, -1)
-        return last_hidden_state[:, 0 , :], cat, ner
+        news_embeddings = last_hidden_state[:, 0 , :].reshape(bs, n, -1)
+        return news_embeddings, cat, ner

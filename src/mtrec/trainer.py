@@ -39,12 +39,25 @@ def cosine_sim(user_embedding, news_embedding):
     Returns:
         torch.Tensor: Batch_size * N tensor of scores.
     """
-    # scores = user_embedding.unsqueeze(1)* news_embedding
     scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2)
     return scores
 
+
+
+def main_loss(scores, labels):
+    # normalization? TODO
+    scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
+    scores = torch.exp(scores)  # apply exponential function
+    sum_exp = torch.sum(scores, dim=1, keepdim=True)  # calculate the sum of exponential scores
+    scores = scores / sum_exp  # normalize the scores to sum to 1
+    sum_exp = torch.sum(torch.exp(scores), dim = 1)
+    pos_scores =  torch.einsum("bs,bs->b", scores, labels*1.0)
+    return -torch.log(pos_scores/sum_exp).mean() #no need for sum since only one positive label
+
+
+
 def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cosine_sim,
-          criterion: nn.Module = nn.CrossEntropyLoss(),  device:str = "cpu", save_dir:str = "saved_models"):
+          criterion:callable = main_loss,  device:str = "cpu", save_dir:str = "saved_models"):
     """
     Function to train the model on the given dataset.
     
@@ -88,35 +101,30 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     try: #training can be interrupted by catching KeyboardInterrupt
         #training
         for epoch in range(cfg['epochs']):
+            print(f"Epoch {epoch} / {cfg['epochs']}")
             news_encoder.train()
             user_encoder.train()
             for data in dataloader_train:
                 # Get the data
-                # (user_histories, user_mask, news_tokens, news_mask) , labels = data
-                # user_histories = user_histories.to(device)
-                # user_mask = user_mask.to(device)
-                # news_tokens = news_tokens.to(device)
-                # news_mask = news_mask.to(device)
-
-
-                #BEGIN temp
-                (user_histories, news_tokens) , labels = data
+                (user_histories, user_mask, news_tokens, news_mask) , labels = data
                 user_histories = user_histories.to(device)
-                user_mask = False
+                user_mask = user_mask.to(device)
                 news_tokens = news_tokens.to(device)
-                news_mask = False
-                ##END temp
+                news_mask = news_mask.to(device)
                 labels = labels.to(device)
                 optimizer.zero_grad()
                 # Get the embeddings
                 user_embeddings = user_encoder(user_histories, user_mask)
                 news_embeddings, cat, ner = news_encoder(news_tokens, news_mask)
                 scores = scoring_function(user_embeddings, news_embeddings)
+                print(f"train scores: {scores}")
+                print(f"train labels: {labels}")
                 loss = criterion(scores, labels) ##TODO make criterion correct for ranking
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()
-            print("Epoch {} Loss: {}".format(epoch, total_loss))
+                break #TODO remove
+            print("training loss: ", total_loss)
             user_encoder.eval()
             news_encoder.eval()
             total_loss_val = 0
@@ -131,17 +139,26 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 user_embeddings = user_encoder(user_histories, user_mask)
                 news_embeddings, cat, ner = news_encoder(news_tokens, news_mask)
                 scores = scoring_function(user_embeddings, news_embeddings)
+                print(f"val scores: {scores}")
+                print(f"val labels: {labels}")
                 loss = criterion(scores, labels)
+                print(loss)
                 total_loss_val += loss.item()
+                break #TODO: remove
             #saving best models
-            if total_loss_val < best_loss:                 
+            if total_loss_val < best_loss:   
+                print(f"total loss val: {total_loss_val}")
+                print(f"best loss: {best_loss}")              
                 print("Saving model @{epoch}")
                 best_loss = total_loss_val
+                
+                print(f"total loss val: {total_loss_val}")
+                print(f"best loss: {best_loss}")
                 torch.save(user_encoder.state_dict(), save_path + '/user_encoder.pth')
                 torch.save(news_encoder.state_dict(), save_path + '/news_encoder.pth')
                 best_user_encoder = copy.deepcopy(user_encoder)
                 best_news_encoder = copy.deepcopy(news_encoder)
-            print("Validation Loss: {}".format(total_loss_val))
+            print(f"Validation Loss: {total_loss_val}")
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best models so far.")
     

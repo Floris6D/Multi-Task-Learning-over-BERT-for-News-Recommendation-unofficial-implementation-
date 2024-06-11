@@ -23,10 +23,8 @@ class UserEncoder(torch.nn.Module):
     def forward(self, tokens_h, mask_h = False):
         bs, h, ts = tokens_h.shape
         tokens_h = tokens_h.reshape(bs * h, ts)
-        if mask_h: 
-            R_h = self.bert(tokens_h, mask_h).last_hidden_state[:, 0, :]
-        else:
-            R_h = self.bert(tokens_h).last_hidden_state[:, 0, :]
+        mask_h = mask_h.reshape(bs * h, ts)
+        R_h = self.bert(tokens_h, mask_h).last_hidden_state[:, 0, :]
         R_h = R_h.reshape(bs, h, -1) #batch_size * h * token_size
         att = self.calc_att(R_h) #batch_size * h
         user_embeddings = torch.einsum("bi,bik->bk", att, R_h) #batch_size * token_size
