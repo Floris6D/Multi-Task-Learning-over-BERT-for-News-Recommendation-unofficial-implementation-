@@ -119,8 +119,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 user_embeddings = user_encoder(user_histories, user_mask)            
                 news_embeddings, cat, ner = news_encoder(news_tokens, category, news_mask, category_mask)                 
                 cat_loss = category_loss(cat, c_labels)
-                print("category_loss: ", cat_loss)
-                
+                print("category_loss: ", cat_loss)             
                 scores = scoring_function(user_embeddings, news_embeddings)
                 print(f"train scores: {scores}")
                 print(f"train labels: {labels}")

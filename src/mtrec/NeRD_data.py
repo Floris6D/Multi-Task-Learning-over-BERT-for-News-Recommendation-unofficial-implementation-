@@ -52,6 +52,8 @@ class EB_NeRDDataset(Dataset):
         self.y = self.df_behaviors['labels']       
         
         self.create_category_labels()
+        
+        self.generate_ner_tag()
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
         (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title, self.category_his, self.mask_category_his), (self.y, self.c_y) = self.transform()
         
@@ -238,34 +240,63 @@ class EB_NeRDDataset(Dataset):
                         
             return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title, category_his, mask_category_his), (self.y, self.c_y)
     
-    def create_category_labels(self):
-        unique_categories = self.df_articles.select(pl.col('category_str').unique()).to_series().to_list()    
-        
-        self.name_dict = {}
-        for i, name in enumerate(unique_categories):        
-            vector = [0] * 25      
-            vector[i] = 1            
-            self.name_dict[name] = vector
+    def create_category_labels(self):       
 
+        # Get unique categories and their corresponding indices
+        unique_categories = self.df_articles.select(pl.col('category_str').unique()).to_series().to_list()
+
+        # Create a mapping dictionary for category to one-hot vectors
+        self.name_dict = {name: [0] * 25 for name in unique_categories}
+        for i, name in enumerate(unique_categories):
+            self.name_dict[name][i] = 1
+
+        # Map categories to vectors directly in the DataFrame
         self.df_articles = self.df_articles.with_columns(
             pl.col('category_str').apply(self.map_category_to_vector).alias('category_vector')
         )
+
+        # Convert article_id to category vectors using a dictionary for quick lookup
+        article_to_vector = {row['article_id']: row['category_vector'] for row in self.df_articles.to_dicts()}
+
+        # Generate labels using the precomputed dictionary
         labels = []
         for elem in self.df_behaviors['article_id_fixed']:
-            vectors = []            
-            for id in elem:                
+            vectors = []
+            for id in elem:
                 if id == 0:
                     vectors.append([0] * 25)
-                    
-                else:                
-                    vectors.append(self.df_articles.filter(pl.col('article_id') == id)['category_vector'][0])
-            labels.append(vectors)    
-           
+                else:
+                    vectors.append(article_to_vector.get(id, [0] * 25))
+            labels.append(vectors)
+
         self.c_y = np.array(labels)
-        print(self.c_y.shape)
+              
         
     def map_category_to_vector(self, category_str):
             return self.name_dict[category_str]
+        
+    def generate_ner_tag(self):
+        # print(self.df_articles.columns)
+        test1 = self.df_articles.select(pl.col('ner_clusters'))
+        test2 = self.df_articles.select(pl.col('title'))
+        ner_labels = []
+        internal = False               
+        for elem, elem2 in zip(test2.to_series().to_list(), test1.to_series().to_list()):
+            vector = []            
+            for i in elem.split():
+                if internal and i in elem2:
+                    vector.append("I")
+                elif i in elem2:
+                    vector.append("B")
+                    internal = True
+                
+                else:
+                    vector.append("O")
+                    internal = False
+            ner_labels.append(vector)   
+        self.ner_y = ner_labels
+            
+        return 1
 
 def pad_list(lst, length):
     lst = lst.to_list()
