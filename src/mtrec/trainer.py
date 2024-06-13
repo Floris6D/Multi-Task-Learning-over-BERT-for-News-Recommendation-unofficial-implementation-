@@ -73,12 +73,11 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     """
     #initialize optimizer
     params = [
-        {"params": [user_encoder.W,  user_encoder.q],   "lr": cfg["lr_user"]},  # Parameters of the linear layer in user encoder
+        {"params": [user_encoder.W,  user_encoder.q],   "lr": cfg["lr_user"]},  # lr of attention layer in user encoder
         {"params": list(news_encoder.cat_net.parameters()) + list(news_encoder.ner_net.parameters()),
-                   "lr": cfg["lr_news"]},  # Parameters of the linear layer in news encoder
-        # {"params": user_encoder.bert.parameters(), "lr": cfg["lr_bert"]},  # Parameters of BERT in user encoder
-        {"params": news_encoder.bert.parameters(), "lr": cfg["lr_bert"]}  # Parameters of BERT in news encoder
-    ]
+                   "lr": cfg["lr_news"]},  # lr of auxiliary tasks
+        {"params": news_encoder.bert.parameters(), "lr": cfg["lr_bert"]}  # Parameters of BERT
+    ] # note that the same bert instance is used in both encoders, so it only needs to be defined once
 
     if cfg["optimizer"] == "adam":
         optimizer = torch.optim.Adam(params)

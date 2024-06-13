@@ -2,8 +2,8 @@
 news_encoder:   
   input_size : 768 #TODO link to bert instead of hardcode
   embedding_dim : 16
-  num_classes : 3
-  num_ner : 4
+  num_classes : 20
+  num_ner : 3
 
 user_encoder:
   input_size : 768 #TODO link to bert instead of hardcode

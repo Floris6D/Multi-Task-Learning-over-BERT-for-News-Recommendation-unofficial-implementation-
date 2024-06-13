@@ -21,6 +21,7 @@ class NewsEncoder(torch.nn.Module):
             layers.append(act_fn)
             input_size = hidden_size
         layers.append(torch.nn.Linear(hidden_size, output_size))
+        layers.append(torch.nn.Softmax(dim=1))
         return torch.nn.Sequential(*layers)
 
     def forward_cat(self, last_hidden_state):
