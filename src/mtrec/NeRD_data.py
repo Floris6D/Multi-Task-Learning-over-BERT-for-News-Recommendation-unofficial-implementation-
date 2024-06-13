@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 import polars as pl
 
-from ebrec.utils._polars import slice_join_dataframes, concat_str_columns
+from ebrec.utils._polars import slice_join_dataframes, concat_str_columns, filter_maximum_lengths_from_list
 from ebrec.utils._behaviors import (
     create_binary_labels_column,
     sampling_strategy_wu2019,
@@ -49,12 +49,12 @@ class EB_NeRDDataset(Dataset):
         self.X = self.df_behaviors.drop('labels').with_columns(
             pl.col('article_ids_inview').list.len().alias('n_samples')
         ) #Drop labels and add n_samples (which is the number of articles in the inview list)
-        self.y = self.df_behaviors['labels']
+        self.y = self.df_behaviors['labels']       
         
+        self.create_category_labels()
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
-        (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), self.y = self.transform()
+        (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title, self.category_his, self.mask_category_his), (self.y, self.c_y) = self.transform()
         
-    
     def __len__(self):
         return int(len(self.y))
 
@@ -66,8 +66,8 @@ class EB_NeRDDataset(Dataset):
         mask_pred_input_title:  (samples, npratio, document_dimension)
         batch_y:                (samples, npratio)
         """
-        x = (self.his_input_title[idx], self.mask_his_input_title[idx], self.pred_input_title[idx], self.mask_pred_input_title[idx])
-        y = self.y[idx]
+        x = (self.his_input_title[idx], self.mask_his_input_title[idx], self.pred_input_title[idx], self.mask_pred_input_title[idx], self.category_his[idx], self.mask_category_his[idx])
+        y = (self.y[idx], self.c_y[idx])
         return x, y
 
     
@@ -96,7 +96,7 @@ class EB_NeRDDataset(Dataset):
                 on='user_id',
                 how='left',
             )
-        )
+        )        
         
         # Now transform the data for negative sampling and add labels based on train, val, test
         if self.wu_sampling and self.split == 'train':
@@ -107,12 +107,18 @@ class EB_NeRDDataset(Dataset):
                 with_replacement=True,
                 seed=123,
             ).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
+        elif self.split == 'validation':
+            max_length = (df_behaviors['article_ids_inview'].list.lengths().max())
+            df_behaviors = df_behaviors.with_columns([
+                pl.col('article_ids_inview').apply(lambda x: pad_list(x, max_length)).alias('article_ids_inview')
+            ])
+            df_behaviors = df_behaviors.select(COLUMNS).pipe(create_binary_labels_column, shuffle=False).sample(fraction=self.dataset_fraction)           
+
         else:
             df_behaviors = df_behaviors.select(COLUMNS).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
         
         # Store the behaviors in the class
         self.df_behaviors = df_behaviors
-        
         # Load the article data
         self.df_articles = pl.read_parquet(os.path.join(self.data_dir, 'articles.parquet'))
         
@@ -123,9 +129,15 @@ class EB_NeRDDataset(Dataset):
         
         # This add the bert tokenization to the df
         self.df_articles, col_name_token_title, col_name_mask = convert_text2encoding_with_transformers_tokenizers(self.df_articles, self.tokenizer, column='title', max_length=self.max_title_length)
+        
+        self.df_articles, col_name_token_category, col_name_mask_category = convert_text2encoding_with_transformers_tokenizers(self.df_articles, self.tokenizer, column='category_str', max_length=self.max_title_length)
+
         # Now create lookup tables
         article_mapping_token = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_token_title, article_col='article_id')
         article_mapping_mask = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_mask, article_col='article_id')
+        
+        article_category_mapping_token = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_token_category, article_col='article_id')
+        article_category_mapping_mask = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_mask_category, article_col='article_id')
         
         self.lookup_article_index, self.lookup_article_matrix = create_lookup_objects(
             article_mapping_token, unknown_representation='zeros'
@@ -133,70 +145,134 @@ class EB_NeRDDataset(Dataset):
         self.lookup_article_index_mask, self.lookup_article_matrix_mask = create_lookup_objects(
             article_mapping_mask, unknown_representation='zeros'
         )
-        self.unknown_index = [0]
         
-        
-    def transform(self):
-        # Map the article ids to the lookup table (not sure what this value should represent, I think it's the tokenized title)
-        self.X = self.X.pipe(
-            map_list_article_id_to_value,
-            behaviors_column='article_id_fixed',
-            mapping=self.lookup_article_index,
-            fill_nulls=self.unknown_index,
-            drop_nulls=False,
-        ).pipe(
-            map_list_article_id_to_value,
-            behaviors_column='article_ids_inview',
-            mapping=self.lookup_article_index,
-            fill_nulls=self.unknown_index,
-            drop_nulls=False,
+        self.lookup_category_index, self.lookup_category_matrix = create_lookup_objects(
+            article_category_mapping_token, unknown_representation='zeros'
+        )
+        self.lookup_category_index_mask, self.lookup_category_matrix_mask = create_lookup_objects(
+            article_category_mapping_mask, unknown_representation='zeros'
         )
         
-        if self.eval_mode or not self.wu_sampling:
-            repeats = np.array(self.X["n_samples"])
-            # =>
-            self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
-            # =>
-            his_input_title = repeat_by_list_values_from_matrix(
-                self.X['article_id_fixed'].to_list(),
-                matrix=self.lookup_article_matrix,
-                repeats=repeats,
-            )
-            # =>
-            mask_his_input_title = repeat_by_list_values_from_matrix(
-                self.X['article_id_fixed'].to_list(),
-                matrix=self.lookup_article_matrix_mask,
-                repeats=repeats,
-            )
-            # =>
-            pred_input_title = self.lookup_article_matrix[
-                self.X['article_ids_inview'].explode().to_list()
-            ]
-            mask_pred_input_title = self.lookup_article_matrix_mask[
-                self.X['article_ids_inview'].explode().to_list()
-            ]
-        else:
-            self.y = np.array(self.y.to_list())
-            his_input_title = self.lookup_article_matrix[
-                self.X['article_id_fixed'].to_list()
-            ]
-            mask_his_input_title = self.lookup_article_matrix_mask[
-                self.X['article_id_fixed'].to_list()
-            ]
-            pred_input_title = self.lookup_article_matrix[
-                self.X['article_ids_inview'].to_list()
-            ]
-            mask_pred_input_title = self.lookup_article_matrix_mask[
-                self.X['article_ids_inview'].to_list()
-            ]
+        self.unknown_index = [0]
+        
+    def transform(self):
+            # Map the article ids to the lookup table (not sure what this value should represent, I think it's the tokenized title)
+            self.X = self.X.pipe(
+                map_list_article_id_to_value,
+                behaviors_column='article_id_fixed',
+                mapping=self.lookup_article_index,
+                fill_nulls=self.unknown_index,
+                drop_nulls=False,
+            ).pipe(
+                map_list_article_id_to_value,
+                behaviors_column='article_ids_inview',
+                mapping=self.lookup_article_index,
+                fill_nulls=self.unknown_index,
+                drop_nulls=False,
+            ) 
+            
+            if not self.wu_sampling:
+                repeats = np.array(self.X["n_samples"])
+                # =>
+                self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
+                # =>
+                his_input_title = repeat_by_list_values_from_matrix(
+                    self.X['article_id_fixed'].to_list(),
+                    matrix=self.lookup_article_matrix,
+                    repeats=repeats,
+                )
+                # =>
+                mask_his_input_title = repeat_by_list_values_from_matrix(
+                    self.X['article_id_fixed'].to_list(),
+                    matrix=self.lookup_article_matrix_mask,
+                    repeats=repeats,
+                )
+                # =>
+                pred_input_title = self.lookup_article_matrix[
+                    self.X['article_ids_inview'].explode().to_list()
+                ]
+                mask_pred_input_title = self.lookup_article_matrix_mask[
+                    self.X['article_ids_inview'].explode().to_list()
+                ]
+                
+                category_his = repeat_by_list_values_from_matrix(
+                    self.X['article_id_fixed'].to_list(),
+                    matrix=self.lookup_category_matrix,
+                    repeats=repeats,
+                )                
+                mask_category_his = repeat_by_list_values_from_matrix(
+                    self.X['article_id_fixed'].to_list(),
+                    matrix= self.lookup_category_matrix_mask,
+                    repeats=repeats,
+                )          
+            else:                
+                self.y = np.array(self.y.to_list())
+                # self.c_y = np.array(self.c_y.to_list()) 
+                    
+                his_input_title = self.lookup_article_matrix[
+                    self.X['article_id_fixed'].to_list()
+                ]
+                mask_his_input_title = self.lookup_article_matrix_mask[
+                    self.X['article_id_fixed'].to_list()
+                ]
+                pred_input_title = self.lookup_article_matrix[
+                    self.X['article_ids_inview'].to_list()
+                ]
+                mask_pred_input_title = self.lookup_article_matrix_mask[
+                    self.X['article_ids_inview'].to_list()
+                ]
+                category_his = self.lookup_category_matrix[
+                    self.X['article_id_fixed'].to_list()
+                ]
+                mask_category_his = self.lookup_category_matrix_mask[
+                    self.X['article_id_fixed'].to_list()
+                ]
+            
             pred_input_title = np.squeeze(pred_input_title, axis=2)
             mask_pred_input_title = np.squeeze(mask_pred_input_title, axis=2)
+            
+            his_input_title = np.squeeze(his_input_title, axis=2)
+            mask_his_input_title = np.squeeze(mask_his_input_title, axis=2)
+            category_his = np.squeeze(category_his, axis=2)
+            mask_category_his = np.squeeze(mask_category_his, axis=2)
+                        
+            return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title, category_his, mask_category_his), (self.y, self.c_y)
+    
+    def create_category_labels(self):
+        unique_categories = self.df_articles.select(pl.col('category_str').unique()).to_series().to_list()    
+        
+        self.name_dict = {}
+        for i, name in enumerate(unique_categories):        
+            vector = [0] * 25      
+            vector[i] = 1            
+            self.name_dict[name] = vector
 
-        his_input_title = np.squeeze(his_input_title, axis=2)
-        mask_his_input_title = np.squeeze(mask_his_input_title, axis=2)
+        self.df_articles = self.df_articles.with_columns(
+            pl.col('category_str').apply(self.map_category_to_vector).alias('category_vector')
+        )
+        labels = []
+        for elem in self.df_behaviors['article_id_fixed']:
+            vectors = []            
+            for id in elem:                
+                if id == 0:
+                    vectors.append([0] * 25)
+                    
+                else:                
+                    vectors.append(self.df_articles.filter(pl.col('article_id') == id)['category_vector'][0])
+            labels.append(vectors)    
+           
+        self.c_y = np.array(labels)
+        print(self.c_y.shape)
         
-        return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), self.y
+    def map_category_to_vector(self, category_str):
+            return self.name_dict[category_str]
+
+def pad_list(lst, length):
+    lst = lst.to_list()
+    lst.extend([0] * (length - len(lst)))
         
+    return lst      
+
 def convert_text2encoding_with_transformers_tokenizers(
     df: pl.DataFrame,
     tokenizer: AutoTokenizer,
@@ -252,7 +328,7 @@ def convert_text2encoding_with_transformers_tokenizers(
     df = df.with_columns(pl.Series(new_column_mask, token_masks))
     return df, new_column_id, new_column_mask
     
-    
+
     # def encode(self, batch):
     #     batch = [tokenize(sent) for sent in batch]
     #     token_item = self.tokenizer(batch, padding="max_length", truncation=True, max_length=self.max_length, add_special_tokens=True)

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.nn.functional import one_hot
 import os
 import sys
 import copy
@@ -26,7 +27,7 @@ def cross_product(user_embedding, news_embedding):
         torch.Tensor: Batch_size * N tensor of scores.
     """
     scores = user_embedding.unsqueeze(1)* news_embedding
-    return scores
+    return scoresz
 
 def cosine_sim(user_embedding, news_embedding):
     """
@@ -54,7 +55,9 @@ def main_loss(scores, labels):
     pos_scores =  torch.einsum("bs,bs->b", scores, labels*1.0)
     return -torch.log(pos_scores/sum_exp).mean() #no need for sum since only one positive label
 
-
+def category_loss(predicted_probs, labels):
+    r, c = predicted_probs.shape
+    return -torch.mean(torch.sum(labels.reshape(r, c) * torch.log(predicted_probs), dim=1))
 
 def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cosine_sim,
           criterion:callable = main_loss,  device:str = "cpu", save_dir:str = "saved_models"):
@@ -105,7 +108,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             user_encoder.train()
             for data in dataloader_train:
                 # Get the data
-                (user_histories, user_mask, news_tokens, news_mask) , labels = data
+                (user_histories, user_mask, news_tokens, news_mask, category, category_mask), (labels, c_labels) = data
                 user_histories = user_histories.to(device)
                 user_mask = user_mask.to(device)
                 news_tokens = news_tokens.to(device)
@@ -113,12 +116,15 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 labels = labels.to(device)
                 optimizer.zero_grad()
                 # Get the embeddings
-                user_embeddings = user_encoder(user_histories, user_mask)
-                news_embeddings, cat, ner = news_encoder(news_tokens, news_mask)
+                user_embeddings = user_encoder(user_histories, user_mask)            
+                news_embeddings, cat, ner = news_encoder(news_tokens, category, news_mask, category_mask)                 
+                cat_loss = category_loss(cat, c_labels)
+                print("category_loss: ", cat_loss)
+                
                 scores = scoring_function(user_embeddings, news_embeddings)
                 print(f"train scores: {scores}")
                 print(f"train labels: {labels}")
-                loss = criterion(scores, labels) ##TODO make criterion correct for ranking
+                loss = criterion(scores, labels) ##TODO make criterion correct for ranking               
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()
@@ -129,14 +135,14 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             total_loss_val = 0
             #validation
             for data in dataloader_val:
-                (user_histories, user_mask, news_tokens, news_mask) , labels = data
+                (user_histories, user_mask, news_tokens, news_mask, category, category_mask), (labels, c_labels) = data
                 user_histories = user_histories.to(device)
                 user_mask = user_mask.to(device)
                 news_tokens = news_tokens.to(device)
                 news_mask = news_mask.to(device)
                 labels = labels.to(device)
-                user_embeddings = user_encoder(user_histories, user_mask)
-                news_embeddings, cat, ner = news_encoder(news_tokens, news_mask)
+                user_embeddings = user_encoder(user_histories, user_mask)           
+                news_embeddings, cat, ner = news_encoder(news_tokens, category, news_mask, category_mask)
                 scores = scoring_function(user_embeddings, news_embeddings)
                 print(f"val scores: {scores}")
                 print(f"val labels: {labels}")
@@ -191,7 +197,7 @@ def test(news_encoder, user_encoder, dataloader_test,
         news_encoder (torch.nn.Module): The news encoder module.
         user_encoder (torch.nn.Module): The user encoder module.
         dataloader_test (torch.utils.data.DataLoader): The dataloader for the test dataset.
-        device (torch.device): The device to be used for testing.
+        device (torch.device): The device to be uszed for testing.
     """
     user_encoder.eval()
     news_encoder.eval()

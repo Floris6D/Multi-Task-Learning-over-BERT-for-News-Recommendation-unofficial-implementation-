@@ -33,14 +33,22 @@ class NewsEncoder(torch.nn.Module):
         output =  self.ner_net(sentence_tokens)
         return output
 
-
-    def forward(self, tokens, mask = False):
+    def forward(self, tokens, cat_tokens, mask = False, cat_mask = False):
         bs, n, ts = tokens.shape
         tokens = tokens.reshape(bs*n, ts)
         mask = mask.reshape(bs*n, ts)
         x = self.bert(tokens, mask)
+       
         last_hidden_state = x.last_hidden_state
-        cat = self.forward_cat(last_hidden_state)
-        ner = self.forward_ner(last_hidden_state).reshape(bs, n, -1)
+        # cat = self.forward_cat(last_hidden_state)
+        # ner = self.forward_ner(last_hidden_state).reshape(bs, n, -1)        
+        ner = 1
         news_embeddings = last_hidden_state[:, 0 , :].reshape(bs, n, -1)
+                
+        bs, n, ts = cat_tokens.shape
+        cat_tokens = cat_tokens.reshape(bs*n, ts)
+        cat_mask = cat_mask.reshape(bs*n, ts)
+        c_x = self.bert(cat_tokens, cat_mask)
+        cat = self.forward_cat(c_x.last_hidden_state)
+        
         return news_embeddings, cat, ner
