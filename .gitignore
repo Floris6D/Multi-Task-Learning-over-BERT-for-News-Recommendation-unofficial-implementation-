@@ -3,7 +3,7 @@
 
 # Data
 data/
-
+src/mtrec/saved_models
 # Mac/OSX
 .DS_Store
 
