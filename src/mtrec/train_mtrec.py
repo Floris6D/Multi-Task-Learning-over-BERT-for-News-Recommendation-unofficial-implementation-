@@ -1,6 +1,5 @@
 import yaml
 import argparse
-import yaml
 
 #get data
 from NeRD_data import EB_NeRDDataset
@@ -37,8 +36,6 @@ def main():
     
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
     (dataloader_train, dataloader_val) = get_dataloaders(cfg)
-
-    
 
     user_encoder, news_encoder = train(user_encoder     = user_encoder, 
                                        news_encoder     = news_encoder, 
