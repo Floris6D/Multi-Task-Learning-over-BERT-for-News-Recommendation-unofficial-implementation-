@@ -1,6 +1,5 @@
 import torch
 from transformers import BertModel
-#TODO implement bert uncased from huggingface
 
 class NewsEncoder(torch.nn.Module):
     def __init__(self, input_size, embedding_dim, num_classes, num_ner, bert):
@@ -29,10 +28,9 @@ class NewsEncoder(torch.nn.Module):
         return self.cat_net(cls_tokens)
 
     def forward_ner(self, last_hidden_state):
-        sentence_tokens = last_hidden_state[:, 1:-1, :] #all tokens but SEP and CLS
+        sentence_tokens = last_hidden_state[:, 1:-1, :] #all tokens but SEP and CLS #TODO: check how this works with padding
         output =  self.ner_net(sentence_tokens)
         return output
-
 
     def forward(self, tokens, mask = False):
         bs, n, ts = tokens.shape
