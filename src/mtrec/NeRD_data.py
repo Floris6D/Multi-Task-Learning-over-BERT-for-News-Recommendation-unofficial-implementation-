@@ -55,7 +55,7 @@ class EB_NeRDDataset(Dataset):
         
         self.generate_ner_tag()
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
-        (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title, self.category_his, self.mask_category_his), (self.y, self.c_y) = self.transform()
+        (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), (self.y, self.c_y) = self.transform()
         
     def __len__(self):
         return int(len(self.y))
@@ -68,7 +68,7 @@ class EB_NeRDDataset(Dataset):
         mask_pred_input_title:  (samples, npratio, document_dimension)
         batch_y:                (samples, npratio)
         """
-        x = (self.his_input_title[idx], self.mask_his_input_title[idx], self.pred_input_title[idx], self.mask_pred_input_title[idx], self.category_his[idx], self.mask_category_his[idx])
+        x = (self.his_input_title[idx], self.mask_his_input_title[idx], self.pred_input_title[idx], self.mask_pred_input_title[idx])
         y = (self.y[idx], self.c_y[idx])
         return x, y
 
@@ -131,28 +131,16 @@ class EB_NeRDDataset(Dataset):
         
         # This add the bert tokenization to the df
         self.df_articles, col_name_token_title, col_name_mask = convert_text2encoding_with_transformers_tokenizers(self.df_articles, self.tokenizer, column='title', max_length=self.max_title_length)
-        
-        self.df_articles, col_name_token_category, col_name_mask_category = convert_text2encoding_with_transformers_tokenizers(self.df_articles, self.tokenizer, column='category_str', max_length=self.max_title_length)
-
+    
         # Now create lookup tables
         article_mapping_token = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_token_title, article_col='article_id')
         article_mapping_mask = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_mask, article_col='article_id')
-        
-        article_category_mapping_token = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_token_category, article_col='article_id')
-        article_category_mapping_mask = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_mask_category, article_col='article_id')
-        
+                
         self.lookup_article_index, self.lookup_article_matrix = create_lookup_objects(
             article_mapping_token, unknown_representation='zeros'
         )
         self.lookup_article_index_mask, self.lookup_article_matrix_mask = create_lookup_objects(
             article_mapping_mask, unknown_representation='zeros'
-        )
-        
-        self.lookup_category_index, self.lookup_category_matrix = create_lookup_objects(
-            article_category_mapping_token, unknown_representation='zeros'
-        )
-        self.lookup_category_index_mask, self.lookup_category_matrix_mask = create_lookup_objects(
-            article_category_mapping_mask, unknown_representation='zeros'
         )
         
         self.unknown_index = [0]
@@ -196,17 +184,7 @@ class EB_NeRDDataset(Dataset):
                 mask_pred_input_title = self.lookup_article_matrix_mask[
                     self.X['article_ids_inview'].explode().to_list()
                 ]
-                
-                category_his = repeat_by_list_values_from_matrix(
-                    self.X['article_id_fixed'].to_list(),
-                    matrix=self.lookup_category_matrix,
-                    repeats=repeats,
-                )                
-                mask_category_his = repeat_by_list_values_from_matrix(
-                    self.X['article_id_fixed'].to_list(),
-                    matrix= self.lookup_category_matrix_mask,
-                    repeats=repeats,
-                )          
+                     
             else:                
                 self.y = np.array(self.y.to_list())
                 # self.c_y = np.array(self.c_y.to_list()) 
@@ -223,22 +201,15 @@ class EB_NeRDDataset(Dataset):
                 mask_pred_input_title = self.lookup_article_matrix_mask[
                     self.X['article_ids_inview'].to_list()
                 ]
-                category_his = self.lookup_category_matrix[
-                    self.X['article_id_fixed'].to_list()
-                ]
-                mask_category_his = self.lookup_category_matrix_mask[
-                    self.X['article_id_fixed'].to_list()
-                ]
             
             pred_input_title = np.squeeze(pred_input_title, axis=2)
             mask_pred_input_title = np.squeeze(mask_pred_input_title, axis=2)
             
             his_input_title = np.squeeze(his_input_title, axis=2)
             mask_his_input_title = np.squeeze(mask_his_input_title, axis=2)
-            category_his = np.squeeze(category_his, axis=2)
-            mask_category_his = np.squeeze(mask_category_his, axis=2)
+            
                         
-            return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title, category_his, mask_category_his), (self.y, self.c_y)
+            return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), (self.y, self.c_y)
     
     def create_category_labels(self):       
 
@@ -260,7 +231,7 @@ class EB_NeRDDataset(Dataset):
 
         # Generate labels using the precomputed dictionary
         labels = []
-        for elem in self.df_behaviors['article_id_fixed']:
+        for elem in self.df_behaviors['article_ids_inview']:
             vectors = []
             for id in elem:
                 if id == 0:

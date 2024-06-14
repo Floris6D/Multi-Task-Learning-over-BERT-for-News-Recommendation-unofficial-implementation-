@@ -108,7 +108,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             user_encoder.train()
             for data in dataloader_train:
                 # Get the data
-                (user_histories, user_mask, news_tokens, news_mask, category, category_mask), (labels, c_labels) = data
+                (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels) = data
                 user_histories = user_histories.to(device)
                 user_mask = user_mask.to(device)
                 news_tokens = news_tokens.to(device)
@@ -117,7 +117,9 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 optimizer.zero_grad()
                 # Get the embeddings
                 user_embeddings = user_encoder(user_histories, user_mask)            
-                news_embeddings, cat, ner = news_encoder(news_tokens, category, news_mask, category_mask)                 
+                news_embeddings, cat, ner = news_encoder(news_tokens, news_mask) 
+                print(c_labels.shape)
+                print(cat.shape)                
                 cat_loss = category_loss(cat, c_labels)
                 print("category_loss: ", cat_loss)             
                 scores = scoring_function(user_embeddings, news_embeddings)
@@ -134,14 +136,14 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             total_loss_val = 0
             #validation
             for data in dataloader_val:
-                (user_histories, user_mask, news_tokens, news_mask, category, category_mask), (labels, c_labels) = data
+                (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels) = data
                 user_histories = user_histories.to(device)
                 user_mask = user_mask.to(device)
                 news_tokens = news_tokens.to(device)
                 news_mask = news_mask.to(device)
                 labels = labels.to(device)
                 user_embeddings = user_encoder(user_histories, user_mask)           
-                news_embeddings, cat, ner = news_encoder(news_tokens, category, news_mask, category_mask)
+                news_embeddings, cat, ner = news_encoder(news_tokens, news_mask)
                 scores = scoring_function(user_embeddings, news_embeddings)
                 print(f"val scores: {scores}")
                 print(f"val labels: {labels}")
