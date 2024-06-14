@@ -285,18 +285,16 @@ class EB_NeRDDataset(Dataset):
             vector = []            
             for i in elem.split():
                 if internal and i in elem2:
-                    vector.append("I")
+                    vector.append(2)
                 elif i in elem2:
-                    vector.append("B")
+                    vector.append(1)
                     internal = True
                 
                 else:
-                    vector.append("O")
+                    vector.append(0)
                     internal = False
             ner_labels.append(vector)   
         self.ner_y = ner_labels
-            
-        return 1
 
 def pad_list(lst, length):
     lst = lst.to_list()
