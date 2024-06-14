@@ -55,7 +55,7 @@ class EB_NeRDDataset(Dataset):
         
         self.generate_ner_tag()
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
-        (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), (self.y, self.c_y) = self.transform()
+        (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), self.y = self.transform()
         
     def __len__(self):
         return int(len(self.y))
@@ -69,7 +69,7 @@ class EB_NeRDDataset(Dataset):
         batch_y:                (samples, npratio)
         """
         x = (self.his_input_title[idx], self.mask_his_input_title[idx], self.pred_input_title[idx], self.mask_pred_input_title[idx])
-        y = (self.y[idx], self.c_y[idx])
+        y = (self.y[idx], self.c_y_his[idx], self.c_y_inview[idx], self.ner_y_his[idx], self.ner_y_inview[idx])
         return x, y
 
     
@@ -209,7 +209,7 @@ class EB_NeRDDataset(Dataset):
             mask_his_input_title = np.squeeze(mask_his_input_title, axis=2)
             
                         
-            return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), (self.y, self.c_y)
+            return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), (self.y)
     
     def create_category_labels(self):       
 
@@ -239,38 +239,82 @@ class EB_NeRDDataset(Dataset):
                 else:
                     vectors.append(article_to_vector.get(id, [0] * 25))
             labels.append(vectors)
-
-        self.c_y = np.array(labels)
+        
+        self.c_y_inview = np.array(labels) 
+        labels = [] 
+        for elem in self.df_behaviors['article_id_fixed']:
+            vectors = []            
+            for id in elem:
+                if id == 0:
+                    vectors.append([0] * 25)
+                else:
+                    vectors.append(article_to_vector.get(id, [0] * 25))
+            labels.append(vectors)    
+        
+        self.c_y_his = np.array(labels)
               
         
     def map_category_to_vector(self, category_str):
             return self.name_dict[category_str]
         
     def generate_ner_tag(self):
-        # print(self.df_articles.columns)
+        
         test1 = self.df_articles.select(pl.col('ner_clusters'))
         test2 = self.df_articles.select(pl.col('title'))
-        ner_labels = []
-        internal = False               
-        for elem, elem2 in zip(test2.to_series().to_list(), test1.to_series().to_list()):
-            vector = []            
+        article_ids = self.df_articles.select(pl.col('article_id')) 
+        internal = False
+        article_ner_dict = {}
+        max = 0
+        for article_id, elem, elem2 in zip(article_ids.to_series().to_list(), test2.to_series().to_list(), test1.to_series().to_list()):
+            vector = []
             for i in elem.split():
                 if internal and i in elem2:
                     vector.append(2)
                 elif i in elem2:
                     vector.append(1)
                     internal = True
-                
                 else:
                     vector.append(0)
                     internal = False
-            ner_labels.append(vector)   
-        self.ner_y = ner_labels
+                if max < len(vector):
+                    max = len(vector)                    
+            article_ner_dict[article_id] = vector
+        
+        labels = []
+        for elem in self.df_behaviors['article_ids_inview']:
+            vectors = []
+            for id in elem:                
+                if id not in article_ner_dict.keys():                    
+                    vectors.append([0] * max)
+                else:
+                    vector = article_ner_dict[id]
+                    vector.extend([0] * (max - len(vector)))    
+                    vectors.append(vector)        
+            vectors.extend([0] * (max - len(vectors)))
+            labels.append(vectors)
+        
+        self.ner_y_inview = labels
+        labels = [] 
+        for elem in self.df_behaviors['article_id_fixed']:
+            vectors = []            
+            for id in elem:                
+                if id not in article_ner_dict.keys():                    
+                    vectors.append([0] * max)
+                else:
+                    vector = article_ner_dict[id]
+                    vector.extend([0] * (max - len(vector)))    
+                    vectors.append(vector)
+                    
+            labels.append(vectors)    
+        
+        self.ner_y_his = labels
+        
+       
 
 def pad_list(lst, length):
     lst = lst.to_list()
     lst.extend([0] * (length - len(lst)))
-        
+  
     return lst      
 
 def convert_text2encoding_with_transformers_tokenizers(
