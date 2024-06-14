@@ -116,7 +116,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 labels = labels.to(device)
                 optimizer.zero_grad()
                 # Get the embeddings
-                user_embeddings = user_encoder(user_histories, user_mask)            
+                user_embeddings = user_encoder(user_histories, user_mask)         
                 news_embeddings, cat, ner = news_encoder(news_tokens, news_mask) 
                 print(c_labels.shape)
                 print(cat.shape)                
@@ -143,7 +143,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 news_mask = news_mask.to(device)
                 labels = labels.to(device)
                 user_embeddings = user_encoder(user_histories, user_mask)           
-                news_embeddings, cat, ner = news_encoder(news_tokens, news_mask)
+                news_embeddings = news_encoder(news_tokens, news_mask, validation = True)
                 scores = scoring_function(user_embeddings, news_embeddings)
                 print(f"val scores: {scores}")
                 print(f"val labels: {labels}")
