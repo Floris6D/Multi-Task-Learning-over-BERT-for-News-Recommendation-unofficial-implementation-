@@ -90,10 +90,12 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     """
     bs, N1, tl1, num_ner = p1.shape
     bs, N2, tl2, num_ner = p2.shape
+       
     p1 = p1.reshape(bs*N1*tl1, num_ner)
     p2 = p2.reshape(bs*N2*tl2, num_ner)
     l1 = l1.reshape(bs*N1*tl1)
     l2 = l2.reshape(bs*N2*tl2)
+       
     mask1 = mask1[:,:,:tl1].reshape(bs*N1*tl1)
     mask2 = mask2[:,:,:tl2].reshape(bs*N2*tl2)
     mask = torch.cat([mask1, mask2], dim = 0)
@@ -103,10 +105,6 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     labels = torch.masked_select(labels, mask.bool())
     return nn.CrossEntropyLoss()(predictions, labels) 
     
-
-
-
-
 def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cosine_sim,
           criterion:callable = main_loss,  device:str = "cpu", save_dir:str = "saved_models"):
     """
@@ -142,7 +140,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     
     #initialize to track best
     total_loss = 0
-    best_loss = float('inf')
+    best_loss = 0
     best_user_encoder, best_news_encoder = None, None
     save_num = 0
     while os.path.exists(save_dir+f'/run{save_num}'):
@@ -159,6 +157,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             for data in dataloader_train:
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
+                
                 optimizer.zero_grad()
                 # Get the embeddings
                 inview_news_embeddings, inview_news_cat, inview_news_ner = news_encoder(news_tokens, news_mask)  
