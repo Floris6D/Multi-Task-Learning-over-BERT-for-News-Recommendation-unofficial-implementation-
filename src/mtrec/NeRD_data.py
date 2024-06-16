@@ -41,7 +41,7 @@ class EB_NeRDDataset(Dataset):
         # Now load the data (article_id_fixed is the history, generated using truncate history)
         COLUMNS = ['user_id', 'article_id_fixed', 'article_ids_inview', 'article_ids_clicked', 'impression_id']
         self.load_data(COLUMNS)
-        
+      
         # Now tokenize the data and create the lookup tables
         self.tokenize_data()
         
@@ -52,8 +52,9 @@ class EB_NeRDDataset(Dataset):
         self.y = self.df_behaviors['labels']       
         
         self.create_category_labels()
-        
+
         self.generate_ner_tag()
+        
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
         (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), self.y = self.transform()
         
@@ -252,19 +253,17 @@ class EB_NeRDDataset(Dataset):
             labels.append(vectors)    
         
         self.c_y_his = np.array(labels)
-              
         
     def map_category_to_vector(self, category_str):
             return self.name_dict[category_str]
         
-    def generate_ner_tag(self):
-        
+    def generate_ner_tag(self):        
         test1 = self.df_articles.select(pl.col('ner_clusters'))
         test2 = self.df_articles.select(pl.col('title'))
         article_ids = self.df_articles.select(pl.col('article_id')) 
         internal = False
         article_ner_dict = {}
-        max = 0
+        max = 28 #shape of the embedding
         for article_id, elem, elem2 in zip(article_ids.to_series().to_list(), test2.to_series().to_list(), test1.to_series().to_list()):
             vector = []
             for i in elem.split():
@@ -275,9 +274,7 @@ class EB_NeRDDataset(Dataset):
                     internal = True
                 else:
                     vector.append(0)
-                    internal = False
-                if max < len(vector):
-                    max = len(vector)                    
+                    internal = False                
             article_ner_dict[article_id] = vector
         
         labels = []
@@ -289,11 +286,10 @@ class EB_NeRDDataset(Dataset):
                 else:
                     vector = article_ner_dict[id]
                     vector.extend([0] * (max - len(vector)))    
-                    vectors.append(vector)        
-            vectors.extend([0] * (max - len(vectors)))
+                    vectors.append(vector)          
             labels.append(vectors)
         
-        self.ner_y_inview = labels
+        self.ner_y_inview = np.array(labels)
         labels = [] 
         for elem in self.df_behaviors['article_id_fixed']:
             vectors = []            
@@ -303,13 +299,10 @@ class EB_NeRDDataset(Dataset):
                 else:
                     vector = article_ner_dict[id]
                     vector.extend([0] * (max - len(vector)))    
-                    vectors.append(vector)
-                    
+                    vectors.append(vector)                    
             labels.append(vectors)    
         
-        self.ner_y_his = labels
-        
-       
+        self.ner_y_his = np.array(labels)       
 
 def pad_list(lst, length):
     lst = lst.to_list()

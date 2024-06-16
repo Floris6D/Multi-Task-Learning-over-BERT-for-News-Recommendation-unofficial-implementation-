@@ -56,4 +56,23 @@ We have created a [notebook](https://github.com/ebanalyse/ebnerd-benchmark/blob/
 
 ## Data manipulation and enrichment
 In the [dataset_ebnerd](https://github.com/ebanalyse/ebnerd-benchmark/blob/main/examples/00_quick_start/dataset_ebnerd.ipynb) demo, we show how one can join histories and create binary labels.
+Git on Snellius
+A git repo has already been set up on Snellius. Changes can be pulled and pushed from that repository.
 
+## Using Snellius
+All jobfiles are located in ./jobs, and a job can be run with the command:
+```
+sbatch ./jobs/<job-file>
+```
+You can see jobs in the queue using the command:
+```
+squeue
+```
+You can then use a JOB-ID to show more information about a job with the command:
+```
+scontrol show job <JOB-ID>
+```
+Lastly, you can cancel a job using:
+```
+scancel <JOB-ID>
+```

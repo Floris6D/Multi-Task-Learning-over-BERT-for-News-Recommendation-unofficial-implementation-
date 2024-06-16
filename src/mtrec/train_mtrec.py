@@ -31,7 +31,7 @@ def main():
     cfg = load_configuration(args.file)
         
     bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name'])
-    user_encoder = UserEncoder(**cfg['user_encoder'], bert=bert)
+    user_encoder = UserEncoder(**cfg['user_encoder'])
     news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert)
     
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
