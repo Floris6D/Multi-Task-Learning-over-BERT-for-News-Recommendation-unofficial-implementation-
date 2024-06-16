@@ -151,6 +151,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 break #TODO: remove
             #saving best models
             if total_loss_val < best_loss:   
+                #TODO: calculate performance metrics
                 print(f"total loss val: {total_loss_val}")
                 print(f"best loss: {best_loss}")              
                 print("Saving model @{epoch}")

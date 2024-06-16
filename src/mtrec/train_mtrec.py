@@ -11,7 +11,7 @@ from news_encoder import NewsEncoder
 from trainer import train, test
 
 def load_configuration(config):
-    file_path = f'configs/{config}.yml'
+    file_path = f'src/mtrec/configs/{config}.yml'
     with open(file_path, 'r') as file:
         configuration = yaml.safe_load(file)
     return configuration
@@ -26,7 +26,7 @@ def get_dataloaders(cfg):
 
 def main():
     parser = argparse.ArgumentParser(description='Process some arguments.')
-    parser.add_argument('--file', default='test', help='Path to the configuration file')
+    parser.add_argument('--file', default='test JE', help='Path to the configuration file')
     args = parser.parse_args()
     cfg = load_configuration(args.file)
         
