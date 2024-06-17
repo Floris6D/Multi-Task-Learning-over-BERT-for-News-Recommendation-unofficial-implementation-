@@ -10,8 +10,4 @@
 
 
 cd $HOME/RecSys/
-conda create -n recsysenv python=3.11
-conda activate recsysenv
-pip install .
-cd src/mtrec
 python3 train_mtrec.py --file train

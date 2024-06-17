@@ -260,23 +260,31 @@ class EB_NeRDDataset(Dataset):
     def generate_ner_tag(self):        
         test1 = self.df_articles.select(pl.col('ner_clusters'))
         test2 = self.df_articles.select(pl.col('title'))
-        article_ids = self.df_articles.select(pl.col('article_id')) 
-        internal = False
+        article_ids = self.df_articles.select(pl.col('article_id'))         
         article_ner_dict = {}
-        max = 28 #shape of the embedding
+        max = 28 #shape of the embedding        
         for article_id, elem, elem2 in zip(article_ids.to_series().to_list(), test2.to_series().to_list(), test1.to_series().to_list()):
             vector = []
+            internal = False
+            elem2 =[word for entry in elem2 for word in entry.split()]
             for i in elem.split():
                 if internal and i in elem2:
+                    
                     vector.append(2)
                 elif i in elem2:
+                    
+                    print(i) 
+                    print(elem2) 
+                    print(elem)               
                     vector.append(1)
                     internal = True
+                    
                 else:
                     vector.append(0)
-                    internal = False                
+                    internal = False              
+                
             article_ner_dict[article_id] = vector
-        
+
         labels = []
         for elem in self.df_behaviors['article_ids_inview']:
             vectors = []
