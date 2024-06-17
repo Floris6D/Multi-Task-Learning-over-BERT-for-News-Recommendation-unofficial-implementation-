@@ -76,7 +76,6 @@ class EB_NeRDDataset(Dataset):
     
     def load_data(self, COLUMNS):
         FULL_PATH = os.path.join(self.data_dir, self.split)
-        
         # Load the data
         df_history = (
             pl.scan_parquet(os.path.join(FULL_PATH, 'history.parquet'))
@@ -162,7 +161,7 @@ class EB_NeRDDataset(Dataset):
                 drop_nulls=False,
             ) 
             
-            if self.eval_mode or not self.wu_sampling:
+            if not self.wu_sampling:
                 repeats = np.array(self.X["n_samples"])
                 # =>
                 self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
@@ -188,7 +187,7 @@ class EB_NeRDDataset(Dataset):
                      
             else:                
                 self.y = np.array(self.y.to_list())
-                # self.c_y = np.array(self.c_y.to_list()) 
+                # self.c_y = np.array(self.c_y.to_list() ) 
                     
                 his_input_title = self.lookup_article_matrix[
                     self.X['article_id_fixed'].to_list()
@@ -260,23 +259,31 @@ class EB_NeRDDataset(Dataset):
     def generate_ner_tag(self):        
         test1 = self.df_articles.select(pl.col('ner_clusters'))
         test2 = self.df_articles.select(pl.col('title'))
-        article_ids = self.df_articles.select(pl.col('article_id')) 
-        internal = False
+        article_ids = self.df_articles.select(pl.col('article_id'))         
         article_ner_dict = {}
-        max = 28 #shape of the embedding
+        max = 28 #shape of the embedding        
         for article_id, elem, elem2 in zip(article_ids.to_series().to_list(), test2.to_series().to_list(), test1.to_series().to_list()):
             vector = []
+            internal = False
+            elem2 =[word for entry in elem2 for word in entry.split()]
             for i in elem.split():
                 if internal and i in elem2:
+                    
                     vector.append(2)
                 elif i in elem2:
+                    
+                    print(i) 
+                    print(elem2) 
+                    print(elem)               
                     vector.append(1)
                     internal = True
+                    
                 else:
                     vector.append(0)
-                    internal = False                
+                    internal = False              
+                
             article_ner_dict[article_id] = vector
-        
+
         labels = []
         for elem in self.df_behaviors['article_ids_inview']:
             vectors = []
