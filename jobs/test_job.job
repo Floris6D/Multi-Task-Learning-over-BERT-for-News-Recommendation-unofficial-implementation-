@@ -10,6 +10,12 @@
 
 
 cd $HOME/RecSys/
-conda init
+
+# Source the .bashrc to initialize conda for the current session
+source $HOME/.bashrc
+
+# Activate env
 conda activate recsysenv
+
+# Run python
 python3 src/mtrec/train_mtrec.py --file test
