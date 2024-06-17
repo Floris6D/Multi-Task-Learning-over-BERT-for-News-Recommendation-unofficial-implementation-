@@ -45,10 +45,19 @@ def cosine_sim(user_embedding, news_embedding):
     scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2)
     return scores
 
-def get2device(data, device):
+def get2device(data, device, unsqueeze = False):
     (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = data
-    if isinstance(ner_labels_his, list):
-        return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his, ner_labels_inview)
+    if unsqueeze:
+        user_histories = user_histories.unsqueeze(0)
+        user_mask = user_mask.unsqueeze(0)
+        news_tokens = news_tokens.unsqueeze(0)
+        news_mask = news_mask.unsqueeze(0)
+        labels = labels.unsqueeze(0)
+        c_labels_his = c_labels_his.unsqueeze(0)
+        c_labels_inview = c_labels_inview.unsqueeze(0)
+        ner_labels_his = ner_labels_his.unsqueeze(0)
+        ner_labels_inview = ner_labels_inview.unsqueeze(0)
+
     return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device))
 
 def main_loss(scores, labels, normalization = False):
@@ -152,6 +161,8 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             news_encoder.train()
             user_encoder.train()
             for data in dataloader_train:
+                print(f"SKIPPING TRAINING FOR DEBUGGING PURPOSES")
+                break
                 optimizer.zero_grad()
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
@@ -183,7 +194,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             #validation
             for data in dataloader_val:
                 # Get the data
-                (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
+                (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device, unsqueeze = True)
                 optimizer.zero_grad()
                 # Get the embeddings
                 inview_news_embeddings, inview_news_cat, inview_news_ner = news_encoder(news_tokens, news_mask)  
