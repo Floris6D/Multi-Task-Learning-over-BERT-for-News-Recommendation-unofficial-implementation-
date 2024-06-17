@@ -2,8 +2,8 @@
 news_encoder:   
   input_size : 768 #TODO link to bert instead of hardcode
   embedding_dim : 16
-  num_classes : 25 #TODO link to dataset instead of hardcode
-  num_ner : 3 
+  num_classes : 25
+  num_ner : 3
 
 user_encoder:
   input_size : 768 #TODO link to bert instead of hardcode
@@ -11,7 +11,7 @@ user_encoder:
 
 trainer:
   optimizer : adam
-  epochs: 2
+  epochs: 1
   lr_user : 0.001
   lr_news : 0.001
   lr_bert : 0.0001
@@ -26,4 +26,4 @@ dataset:
 
 model:
   hidden: 768
-  pretrained_model_name: bert-base-multilingual-uncased
+  pretrained_model_name: bert-base-uncased

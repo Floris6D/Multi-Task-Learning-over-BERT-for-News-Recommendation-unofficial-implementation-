@@ -35,15 +35,18 @@ class NewsEncoder(torch.nn.Module):
         output = torch.nn.functional.softmax(logits, dim=2)
         return output
 
-    def forward(self, tokens, mask = False):
+    def forward(self, tokens, mask = False, validation = False):
         bs, n, ts = tokens.shape
         tokens = tokens.reshape(bs*n, ts)
         mask = mask.reshape(bs*n, ts)
         x = self.bert(tokens, mask)
        
         last_hidden_state = x.last_hidden_state
+        news_embeddings = last_hidden_state[:, 0 , :].reshape(bs, n, -1)
+        if validation:
+            return news_embeddings
         cat = self.forward_cat(last_hidden_state).reshape(bs, n, -1)
         ner = self.forward_ner(last_hidden_state).reshape(bs, n, -1, self.num_ner)        
-        news_embeddings = last_hidden_state[:, 0 , :].reshape(bs, n, -1)      
+          
         
         return news_embeddings, cat, ner

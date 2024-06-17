@@ -45,20 +45,17 @@ def cosine_sim(user_embedding, news_embedding):
     scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2)
     return scores
 
-def get2device(data, device):
+def get2device(data, device, unsqueeze = False):
     (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = data
-    if isinstance(ner_labels_his, list):
-        return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his, ner_labels_inview)
     return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device))
 
-def main_loss(scores, labels):
-    # normalization? TODO
-    # scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
-    # scores = torch.exp(scores)  # apply exponential function
-    # sum_exp = torch.sum(scores, dim=1, keepdim=True)  # calculate the sum of exponential scores
-    # scores = scores / sum_exp  # normalize the scores to sum to 1
+def main_loss(scores, labels, normalization = False):
+    if normalization: # normalization? TODO
+        scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
+        scores = torch.exp(scores)  # apply exponential function
+        sum_exp = torch.sum(scores, dim=1, keepdim=True)  # calculate the sum of exponential scores
+        scores = scores / sum_exp  # normalize the scores to sum to 1
     sum_exp = torch.sum(torch.exp(scores), dim = 1)
-    #pos_scores =  torch.einsum("bs,bs->b", scores, labels*1.0)
     pos_scores = torch.sum(scores * labels, axis = 1)
     return -torch.log(pos_scores/sum_exp).mean() #no need for sum since only one positive label
 
@@ -139,10 +136,8 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     optimizer = PCGrad(optimizer)
     
     #initialize to track best
-    total_loss = 0
-    best_loss = 0
+    total_loss, total_main_loss, best_loss, save_num = 0, 0, 0, 0
     best_user_encoder, best_news_encoder = None, None
-    save_num = 0
     while os.path.exists(save_dir+f'/run{save_num}'):
         save_num += 1
     save_path = save_dir+f'/run{save_num}'
@@ -151,62 +146,66 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     try: #training can be interrupted by catching KeyboardInterrupt
         #training
         for epoch in range(cfg['epochs']):
+            
             print(f"Epoch {epoch} / {cfg['epochs']}")
             news_encoder.train()
             user_encoder.train()
             for data in dataloader_train:
+                optimizer.zero_grad()
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
-                
-                optimizer.zero_grad()
                 # Get the embeddings
                 inview_news_embeddings, inview_news_cat, inview_news_ner = news_encoder(news_tokens, news_mask)  
                 history_news_embeddings, history_news_cat, history_news_ner = news_encoder(user_histories, user_mask) 
                 user_embeddings = user_encoder(history_news_embeddings)
                 # AUX task: Category prediction            
                 cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
-                print(f"cat loss: {cat_loss}")
                 # AUX task: NER 
-                # bs, N1, tl1, num_ner= inview_news_ner.shape
-                # ner_labels_inview  = 2*torch.ones((bs, N1, tl1)).to(device)
-                # bs, N2, tl2, num_ner= history_news_ner.shape
-                # ner_labels_his  = 2*torch.ones((bs, N2, tl2)).to(device)
                 ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, news_mask, user_mask)
-                print(f"ner loss: {ner_loss}")
+                # MAIN task: Click prediction
                 scores = scoring_function(user_embeddings, inview_news_embeddings)
-                main_loss = criterion(scores, labels)           
+                main_loss = criterion(scores, labels)
+                # Backpropagation           
                 optimizer.pc_backward([main_loss, cat_loss, ner_loss])
-                print(f"main loss: {main_loss}")
                 optimizer.step()
                 total_loss += main_loss.item() + cat_loss.item() + ner_loss.item()
-                break #TODO remove
-            print("training loss: ", total_loss)
+                total_main_loss += main_loss.item()
+            total_loss /= len(dataloader_train)
+            total_main_loss /= len(dataloader_train)
+            print(f"Training total Loss: {total_loss}")
+            print(f"Training main Loss: {total_main_loss}")
+
             user_encoder.eval()
             news_encoder.eval()
-            total_loss_val = 0
+            total_loss_val, total_main_loss_val = 0 , 0
+
             #validation
             for data in dataloader_val:
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
-                optimizer.zero_grad()
+        
                 # Get the embeddings
                 inview_news_embeddings, inview_news_cat, inview_news_ner = news_encoder(news_tokens, news_mask)  
                 history_news_embeddings, history_news_cat, history_news_ner = news_encoder(user_histories, user_mask) 
-                user_embeddings = user_encoder(history_news_embeddings)                    
-                # # AUX task: Category prediction            
-                # cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
-                # print(f"cat loss: {cat_loss}")
-                # # AUX task: NER 
-                # ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his)
-                # print(f"ner loss: {ner_loss}")
+                user_embeddings = user_encoder(history_news_embeddings)
+                # AUX task: Category prediction            
+                cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
+                # AUX task: NER 
+                ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, news_mask, user_mask)                    
                 # MAIN task: Click prediction
                 scores = scoring_function(user_embeddings, inview_news_embeddings)
                 main_loss = criterion(scores, labels)
-                print(f"main loss: {main_loss}")
+                # Metrics
                 total_loss_val += main_loss.item() + cat_loss.item() + ner_loss.item()
-                break #TODO: remove
+                total_main_loss_val += main_loss.item()
+            
+            total_loss_val /= len(dataloader_val)
+            total_main_loss_val /= len(dataloader_val)
+            print(f"Validation total Loss: {total_loss_val}")
+            print(f"Validation main Loss: {total_main_loss_val}")
             #saving best models
             if total_loss_val < best_loss:   
+                #TODO: calculate performance metrics
                 print(f"total loss val: {total_loss_val}")
                 print(f"best loss: {best_loss}")              
                 print("Saving model @{epoch}")
@@ -225,7 +224,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     return best_user_encoder, best_news_encoder
 
     
-def get_metrics(y_true, y_pred):
+def get_metrics(y_true, y_pred, metrics):
     """
     Function to calculate the metrics for the given true and predicted labels.
     
@@ -236,11 +235,14 @@ def get_metrics(y_true, y_pred):
     Returns:
         dict: A dictionary containing the calculated metrics.
     """
-    metrics = {
+    result = {
         'mrr_score': mrr_score(y_true, y_pred),
         'ndcg_score': ndcg_score(y_true, y_pred),
         'auc_score_custom': auc_score_custom(y_true, y_pred)
     }
+    for key in metrics:
+            metrics[key] += result[key]
+
     return metrics
 
 def test(news_encoder, user_encoder, dataloader_test,
@@ -256,33 +258,24 @@ def test(news_encoder, user_encoder, dataloader_test,
     """
     user_encoder.eval()
     news_encoder.eval()
-    metrics_total = {
+    metrics = {
         'mrr_score': 0,
         'ndcg_score': 0,
         'auc_score_custom': 0
     }
-    i = 0
+
     for data in dataloader_test:
         # Get the data
-        (user_histories, user_mask, news_tokens, news_mask) , labels = data
-        user_histories = user_histories.to(device)
-        user_mask = user_mask.to(device)
-        news_tokens = news_tokens.to(device)
-        news_mask = news_mask.to(device)
-        labels = labels.to(device)
-        # Get the embeddings
-        user_embeddings = user_encoder(user_histories)
-        news_embeddings = news_encoder(news_tokens, news_mask)
-        # Get the scores
-        scores = scoring_function(user_embeddings, news_embeddings)
+        (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
+        inview_news_embeddings, inview_news_cat, inview_news_ner = news_encoder(news_tokens, news_mask)  
+        history_news_embeddings, history_news_cat, history_news_ner = news_encoder(user_histories, user_mask) 
+        user_embeddings = user_encoder(history_news_embeddings)                    
+        # MAIN task: Click prediction
+        scores = scoring_function(user_embeddings, inview_news_embeddings)
         # Calculate the metrics
-        metrics = get_metrics(labels, scores)
-        for key in metrics_total:
-            metrics_total[key] += metrics[key]
-    
-    for key in metrics_total:
-        metrics_total[key] /= i
-    
+        metrics = get_metrics(labels, scores, metrics)
+    for key in metrics:
+        metrics[key] /= len(dataloader_test)
     for key, value in metrics.items():
         print(f"{key:<5}: {value:.3f}")
         

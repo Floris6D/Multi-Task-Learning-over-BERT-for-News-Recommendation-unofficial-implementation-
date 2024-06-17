@@ -11,7 +11,7 @@ from news_encoder import NewsEncoder
 from trainer import train, test
 
 def load_configuration(config):
-    file_path = f'configs/{config}.yml'
+    file_path = f'src/mtrec/configs/{config}.yml'
     with open(file_path, 'r') as file:
         configuration = yaml.safe_load(file)
     return configuration
