@@ -181,8 +181,6 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
 
             #validation
             for data in dataloader_val:
-                print("removed validation for testing purposes")
-                break
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
         
