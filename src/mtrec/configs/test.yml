@@ -18,7 +18,7 @@ trainer:
   batch_size: 2
 
 dataset:
-  data_dir: ../../data_demo
+  data_dir: data_demo
   history_size: 20
   max_title_length: 30
   npratio: 4
@@ -26,4 +26,4 @@ dataset:
 
 model:
   hidden: 768
-  pretrained_model_name: bert-base-uncased
+  pretrained_model_name: bert-base-multilingual-uncased

@@ -76,7 +76,6 @@ class EB_NeRDDataset(Dataset):
     
     def load_data(self, COLUMNS):
         FULL_PATH = os.path.join(self.data_dir, self.split)
-        
         # Load the data
         df_history = (
             pl.scan_parquet(os.path.join(FULL_PATH, 'history.parquet'))
@@ -162,7 +161,7 @@ class EB_NeRDDataset(Dataset):
                 drop_nulls=False,
             ) 
             
-            if self.eval_mode or not self.wu_sampling:
+            if not self.wu_sampling:
                 repeats = np.array(self.X["n_samples"])
                 # =>
                 self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
@@ -188,7 +187,7 @@ class EB_NeRDDataset(Dataset):
                      
             else:                
                 self.y = np.array(self.y.to_list())
-                # self.c_y = np.array(self.c_y.to_list()) 
+                # self.c_y = np.array(self.c_y.to_list() ) 
                     
                 his_input_title = self.lookup_article_matrix[
                     self.X['article_id_fixed'].to_list()
