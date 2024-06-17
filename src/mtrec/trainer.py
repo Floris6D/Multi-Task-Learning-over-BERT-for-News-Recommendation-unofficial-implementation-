@@ -47,16 +47,15 @@ def cosine_sim(user_embedding, news_embedding):
 
 def get2device(data, device, unsqueeze = False):
     (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = data
-    if unsqueeze:
-        user_histories = user_histories.unsqueeze(0)
-        user_mask = user_mask.unsqueeze(0)
-        news_tokens = news_tokens.unsqueeze(0)
-        news_mask = news_mask.unsqueeze(0)
-        labels = labels.unsqueeze(0)
-        c_labels_his = c_labels_his.unsqueeze(0)
-        c_labels_inview = c_labels_inview.unsqueeze(0)
-        ner_labels_his = ner_labels_his.unsqueeze(0)
-        ner_labels_inview = ner_labels_inview.unsqueeze(0)
+    print("User Histories Shape:", user_histories.shape)
+    print("User Mask Shape:", user_mask.shape)
+    print("News Tokens Shape:", news_tokens.shape)
+    print("News Mask Shape:", news_mask.shape)
+    print("Labels Shape:", labels.shape)
+    print("C Labels His Shape:", c_labels_his.shape)
+    print("C Labels Inview Shape:", c_labels_inview.shape)
+    print("NER Labels His Shape:", ner_labels_his.shape)
+    print("NER Labels Inview Shape:", ner_labels_inview.shape)
 
     return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device))
 
@@ -157,15 +156,16 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     try: #training can be interrupted by catching KeyboardInterrupt
         #training
         for epoch in range(cfg['epochs']):
+            
             print(f"Epoch {epoch} / {cfg['epochs']}")
             news_encoder.train()
             user_encoder.train()
             for data in dataloader_train:
-                print(f"SKIPPING TRAINING FOR DEBUGGING PURPOSES")
-                break
+                print("skipping training for now")
                 optimizer.zero_grad()
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
+                break
                 # Get the embeddings
                 inview_news_embeddings, inview_news_cat, inview_news_ner = news_encoder(news_tokens, news_mask)  
                 history_news_embeddings, history_news_cat, history_news_ner = news_encoder(user_histories, user_mask) 
@@ -194,8 +194,9 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             #validation
             for data in dataloader_val:
                 # Get the data
-                (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device, unsqueeze = True)
+                (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
                 optimizer.zero_grad()
+                return None, None
                 # Get the embeddings
                 inview_news_embeddings, inview_news_cat, inview_news_ner = news_encoder(news_tokens, news_mask)  
                 history_news_embeddings, history_news_cat, history_news_ner = news_encoder(user_histories, user_mask) 
