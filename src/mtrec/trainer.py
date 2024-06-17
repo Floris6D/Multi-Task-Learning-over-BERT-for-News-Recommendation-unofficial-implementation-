@@ -4,6 +4,7 @@ from torch.nn.functional import one_hot
 import os
 import sys
 import copy
+import tqdm
 
 from gradient_surgery import PCGrad
 
@@ -150,7 +151,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             print(f"Epoch {epoch} / {cfg['epochs']}")
             news_encoder.train()
             user_encoder.train()
-            for data in dataloader_train:
+            for data in tqdm.tqdm(dataloader_train):
                 optimizer.zero_grad()
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
@@ -180,7 +181,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             total_loss_val, total_main_loss_val = 0 , 0
 
             #validation
-            for data in dataloader_val:
+            for data in tqdm.tqdm(dataloader_val):
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
         
