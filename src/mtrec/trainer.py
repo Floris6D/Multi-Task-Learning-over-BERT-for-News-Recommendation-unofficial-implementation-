@@ -190,8 +190,8 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
                 optimizer.zero_grad()
                 # Get the embeddings
-                inview_news_embeddings, inview_news_cat, inview_news_ner = news_encoder(news_tokens, news_mask)  
-                history_news_embeddings, history_news_cat, history_news_ner = news_encoder(user_histories, user_mask) 
+                inview_news_embeddings= news_encoder(news_tokens, news_mask, validation = True)  
+                history_news_embeddings = news_encoder(user_histories, user_mask, validation = True) 
                 user_embeddings = user_encoder(history_news_embeddings)                    
                 # # AUX task: Category prediction            
                 # cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
