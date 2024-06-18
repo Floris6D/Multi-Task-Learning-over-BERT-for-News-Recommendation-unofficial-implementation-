@@ -182,7 +182,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             news_encoder.eval()
             total_loss_val, total_main_loss_val = 0 , 0
             total_scores, total_labels = torch.Tensor([]), torch.Tensor([])
-            df_val_data = dataloader_val.dataset.X
+            #df_val_data = dataloader_val.dataset.X
             for data in tqdm.tqdm(dataloader_val):
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
@@ -227,8 +227,8 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 
                 # Calculate the metrics #TODO look at dimensions of scores and labels
                 metrics = MetricEvaluator(
-                    labels=df_validation["labels"].to_list(),
-                    predictions=df_validation["scores"].to_list(),
+                    labels=total_labels.to_list(),
+                    predictions=total_scores.to_list(),
                     metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
                 )
                 metrics.evaluate()
