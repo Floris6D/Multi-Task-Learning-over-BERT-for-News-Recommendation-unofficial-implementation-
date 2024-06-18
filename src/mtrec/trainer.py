@@ -22,7 +22,7 @@ def cross_product(user_embedding, news_embedding):
     Returns:
         torch.Tensor: Batch_size * N tensor of scores.
     """
-    scores = torch.einsum("bk,bik->b",user_embedding, news_embedding)
+    scores = torch.einsum("bk,bik->bi",user_embedding, news_embedding)
     return scores
 
 def cosine_sim(user_embedding, news_embedding):
