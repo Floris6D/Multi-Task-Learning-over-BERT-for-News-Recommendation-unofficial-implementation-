@@ -22,7 +22,7 @@ def cross_product(user_embedding, news_embedding):
     Returns:
         torch.Tensor: Batch_size * N tensor of scores.
     """
-    scores = user_embedding.unsqueeze(1)* news_embedding
+    scores = torch.einsum("bk,bik->b",user_embedding, news_embedding)
     return scores
 
 def cosine_sim(user_embedding, news_embedding):
@@ -97,7 +97,7 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     labels = torch.masked_select(labels, mask.bool())
     return nn.CrossEntropyLoss()(predictions, labels) 
     
-def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cosine_sim,
+def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cross_product,
           criterion:callable = main_loss,  device:str = "cpu", save_dir:str = "saved_models"):
     """
     Function to train the model on the given dataset.
