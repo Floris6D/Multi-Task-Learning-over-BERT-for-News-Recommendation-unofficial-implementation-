@@ -128,7 +128,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
         print("Invalid optimizer <{}>.".format(optimizer))
         return
     
-    optimizer = PCGrad(optimizer)
+    #optimizer = PCGrad(optimizer)
     
     #initialize to track best
     total_loss, total_main_loss, best_loss, save_num = 0, 0, 0, 0
