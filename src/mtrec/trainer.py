@@ -125,7 +125,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     elif cfg["optimizer"] == "sgd":
         optimizer = torch.optim.SGD(params)
     else:
-        print("Invalid optimizer <{}>.".format(optimizer))
+        print("Invalid optimizer <{}>.".format(cfg["optimizer"]))
         return
     
     #optimizer = PCGrad(optimizer)
