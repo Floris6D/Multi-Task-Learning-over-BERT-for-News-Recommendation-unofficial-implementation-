@@ -15,7 +15,7 @@ trainer:
   lr_user : 0.001
   lr_news : 0.001
   lr_bert : 0.0001
-  batch_size: 124
+  batch_size: 16
 
 dataset:
   data_dir: data_demo
