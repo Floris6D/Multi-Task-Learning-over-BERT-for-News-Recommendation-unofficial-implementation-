@@ -176,6 +176,8 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             total_scores, total_labels = torch.Tensor([]), torch.Tensor([])
             #df_val_data = dataloader_val.dataset.X
             for data in tqdm.tqdm(dataloader_val):
+                print("SKIPPING VALIDATION FOR DEBUGGING")
+                break
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
         

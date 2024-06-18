@@ -19,10 +19,10 @@ trainer:
 
 dataset:
   data_dir: data_demo
-  history_size: 20
-  max_title_length: 30
+  history_size: 15
+  max_title_length: 20
   npratio: 4
-  dataset_fraction: 0.01
+  dataset_fraction: 0.1
 
 model:
   hidden: 768
