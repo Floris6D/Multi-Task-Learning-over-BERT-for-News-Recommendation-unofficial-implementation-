@@ -51,7 +51,7 @@ def main_loss(scores, labels, normalization = False):
         scores = scores / sum_exp  # normalize the scores to sum to 1
     sum_exp = torch.sum(torch.exp(scores), dim = 1)
     pos_scores = torch.sum(scores * labels, axis = 1)
-    return -torch.log(pos_scores/sum_exp).mean() #no need for sum since only one positive label
+    return -torch.log(torch.exp(pos_scores)/sum_exp).mean() #no need for sum since only one positive label
 
 # def category_loss(predicted_probs, labels):
 #     r, c = predicted_probs.shape
