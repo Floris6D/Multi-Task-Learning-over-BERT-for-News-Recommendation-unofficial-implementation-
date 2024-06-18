@@ -176,11 +176,11 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             print(f"Training total Loss: {total_loss}")
             print(f"Training main Loss: {total_main_loss}")
 
+            #validation
             user_encoder.eval()
             news_encoder.eval()
             total_loss_val, total_main_loss_val = 0 , 0
-
-            #validation
+            total_scores, total_labels = torch.Tensor([]), torch.Tensor([])
             for data in tqdm.tqdm(dataloader_val):
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
@@ -194,11 +194,15 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 # AUX task: NER 
                 ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, news_mask, user_mask)                    
                 # MAIN task: Click prediction
-                scores = scoring_function(user_embeddings, inview_news_embeddings)
+                scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
                 main_loss = criterion(scores, labels)
                 # Metrics
                 total_loss_val += main_loss.item() + cat_loss.item() + ner_loss.item()
                 total_main_loss_val += main_loss.item()
+                
+                # Save the scores and labels
+                total_scores = torch.cat([total_scores, scores], dim=0)
+                total_labels = torch.cat([total_labels, labels], dim=0)
             
             total_loss_val /= len(dataloader_val)
             total_main_loss_val /= len(dataloader_val)
