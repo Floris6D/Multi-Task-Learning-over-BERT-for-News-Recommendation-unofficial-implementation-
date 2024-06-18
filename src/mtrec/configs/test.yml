@@ -21,7 +21,7 @@ dataset:
   history_size: 15
   max_title_length: 20
   npratio: 4
-  dataset_fraction: 0.10
+  dataset_fraction: 0.01
 
 model:
   hidden: 768
