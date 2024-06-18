@@ -101,7 +101,7 @@ class EB_NeRDDataset(Dataset):
         )        
         
         # Now transform the data for negative sampling and add labels based on train, val, test
-        if self.wu_sampling and self.split == 'train':
+        if self.wu_sampling and self.eval_mode is False:
             df_behaviors = df_behaviors.select(COLUMNS).pipe(
                 sampling_strategy_wu2019,
                 npratio=self.npratio,
@@ -109,16 +109,13 @@ class EB_NeRDDataset(Dataset):
                 with_replacement=True,
                 seed=123,
             ).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
-        elif self.split == 'validation':
+        else:
             max_length = (df_behaviors['article_ids_inview'].list.lengths().max())
             df_behaviors = df_behaviors.with_columns([
                 pl.col('article_ids_inview').apply(lambda x: pad_list(x, max_length)).alias('article_ids_inview')
             ])
             df_behaviors = df_behaviors.select(COLUMNS).pipe(create_binary_labels_column, shuffle=False).sample(fraction=self.dataset_fraction)           
 
-        else:
-            df_behaviors = df_behaviors.select(COLUMNS).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
-        
         # Store the behaviors in the class
         self.df_behaviors = df_behaviors
         # Load the article data
@@ -161,46 +158,48 @@ class EB_NeRDDataset(Dataset):
                 drop_nulls=False,
             ) 
             
-            if not self.wu_sampling:
-                repeats = np.array(self.X["n_samples"])
-                # =>
-                self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
-                # =>
-                his_input_title = repeat_by_list_values_from_matrix(
-                    self.X['article_id_fixed'].to_list(),
-                    matrix=self.lookup_article_matrix,
-                    repeats=repeats,
-                )
-                # =>
-                mask_his_input_title = repeat_by_list_values_from_matrix(
-                    self.X['article_id_fixed'].to_list(),
-                    matrix=self.lookup_article_matrix_mask,
-                    repeats=repeats,
-                )
-                # =>
-                pred_input_title = self.lookup_article_matrix[
-                    self.X['article_ids_inview'].explode().to_list()
-                ]
-                mask_pred_input_title = self.lookup_article_matrix_mask[
-                    self.X['article_ids_inview'].explode().to_list()
-                ]
-                     
-            else:                
-                self.y = np.array(self.y.to_list())
-                # self.c_y = np.array(self.c_y.to_list() ) 
-                    
-                his_input_title = self.lookup_article_matrix[
-                    self.X['article_id_fixed'].to_list()
-                ]
-                mask_his_input_title = self.lookup_article_matrix_mask[
-                    self.X['article_id_fixed'].to_list()
-                ]
-                pred_input_title = self.lookup_article_matrix[
-                    self.X['article_ids_inview'].to_list()
-                ]
-                mask_pred_input_title = self.lookup_article_matrix_mask[
-                    self.X['article_ids_inview'].to_list()
-                ]
+            # if self.eval_mode or not self.wu_sampling:
+            #     # n_samples in eval mode is the max number of articles in the inview list
+            #     repeats = np.array(self.X["n_samples"])
+            #     # =>
+            #     # Shape of y is (n_datapoints * n_samples, 1) #TODO: check if this is correct
+            #     self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
+            #     # =>
+            #     # Shape of his_input_title is (n_datapoints * n_samples, history_size, ..., max_title_length)
+            #     his_input_title = repeat_by_list_values_from_matrix(
+            #         self.X['article_id_fixed'].to_list(),
+            #         matrix=self.lookup_article_matrix,
+            #         repeats=repeats,
+            #     )
+            #     # =>
+            #     mask_his_input_title = repeat_by_list_values_from_matrix(
+            #         self.X['article_id_fixed'].to_list(),
+            #         matrix=self.lookup_article_matrix_mask,
+            #         repeats=repeats,
+            #     )
+            #     # =>
+            #     pred_input_title = self.lookup_article_matrix[
+            #         self.X['article_ids_inview'].explode().to_list()
+            #     ]
+            #     mask_pred_input_title = self.lookup_article_matrix_mask[
+            #         self.X['article_ids_inview'].explode().to_list()
+            #     ]
+                                     
+            self.y = np.array(self.y.to_list())
+            # self.c_y = np.array(self.c_y.to_list() ) 
+                
+            his_input_title = self.lookup_article_matrix[
+                self.X['article_id_fixed'].to_list()
+            ]
+            mask_his_input_title = self.lookup_article_matrix_mask[
+                self.X['article_id_fixed'].to_list()
+            ]
+            pred_input_title = self.lookup_article_matrix[
+                self.X['article_ids_inview'].to_list()
+            ]
+            mask_pred_input_title = self.lookup_article_matrix_mask[
+                self.X['article_ids_inview'].to_list()
+            ]
             
             pred_input_title = np.squeeze(pred_input_title, axis=2)
             mask_pred_input_title = np.squeeze(mask_pred_input_title, axis=2)
