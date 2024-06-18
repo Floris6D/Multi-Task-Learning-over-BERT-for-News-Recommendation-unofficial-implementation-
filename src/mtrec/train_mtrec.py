@@ -8,7 +8,7 @@ from transformers import BertTokenizer, BertModel
 
 from user_encoder import UserEncoder
 from news_encoder import NewsEncoder
-from trainer import train, test
+from trainer import train
 
 def load_configuration(config):
     file_path = f'src/mtrec/configs/{config}.yml'
@@ -45,6 +45,8 @@ def main():
     # results = test(news_encoder,
     #                user_encoder, 
     #                dataloader_test)
+    
+    #TODO: JE: Make submission file
 
 if __name__ == "__main__":
     main()

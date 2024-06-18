@@ -40,16 +40,10 @@ class EB_NeRDDataset(Dataset):
             
         # Now load the data (article_id_fixed is the history, generated using truncate history)
         COLUMNS = ['user_id', 'article_id_fixed', 'article_ids_inview', 'article_ids_clicked', 'impression_id']
-        self.load_data(COLUMNS)
-      
-        # Now tokenize the data and create the lookup tables
-        self.tokenize_data()
-        
-        # Now create the X and y
-        self.X = self.df_behaviors.drop('labels').with_columns(
-            pl.col('article_ids_inview').list.len().alias('n_samples')
-        ) #Drop labels and add n_samples (which is the number of articles in the inview list)
-        self.y = self.df_behaviors['labels']       
+        self.load_behaviors(COLUMNS)
+
+        # Now load and tokenize the data of the articles and create the lookup tables
+        self.load_tokenize_articles()
         
         self.create_category_labels()
 
@@ -74,7 +68,7 @@ class EB_NeRDDataset(Dataset):
         return x, y
 
     
-    def load_data(self, COLUMNS):
+    def load_behaviors(self, COLUMNS):
         FULL_PATH = os.path.join(self.data_dir, self.split)
         # Load the data
         df_history = (
@@ -101,7 +95,7 @@ class EB_NeRDDataset(Dataset):
         )        
         
         # Now transform the data for negative sampling and add labels based on train, val, test
-        if self.wu_sampling and self.split == 'train':
+        if self.wu_sampling and self.eval_mode is False:
             df_behaviors = df_behaviors.select(COLUMNS).pipe(
                 sampling_strategy_wu2019,
                 npratio=self.npratio,
@@ -109,22 +103,26 @@ class EB_NeRDDataset(Dataset):
                 with_replacement=True,
                 seed=123,
             ).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
-        elif self.split == 'validation':
+        else:
             max_length = (df_behaviors['article_ids_inview'].list.lengths().max())
             df_behaviors = df_behaviors.with_columns([
                 pl.col('article_ids_inview').apply(lambda x: pad_list(x, max_length)).alias('article_ids_inview')
             ])
             df_behaviors = df_behaviors.select(COLUMNS).pipe(create_binary_labels_column, shuffle=False).sample(fraction=self.dataset_fraction)           
 
-        else:
-            df_behaviors = df_behaviors.select(COLUMNS).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
-        
         # Store the behaviors in the class
         self.df_behaviors = df_behaviors
+        
+        # Now create the X and y
+        self.X = self.df_behaviors.drop('labels').with_columns(
+            pl.col('article_ids_inview').list.len().alias('n_samples')
+        ) #Drop labels and add n_samples (which is the number of articles in the inview list)
+        self.y = self.df_behaviors['labels']  
+        
+    def load_tokenize_articles(self):
         # Load the article data
         self.df_articles = pl.read_parquet(os.path.join(self.data_dir, 'articles.parquet'))
         
-    def tokenize_data(self):
         # This concatenates the title with the subtitle in the DF, the cat_cal is the column name
         #TODO: JE: Maybe also add subtitle for prediction
         #df_articles, cat_cal = concat_str_columns(df = self.df_articles, columns=['subtitle', 'title'])
@@ -147,7 +145,7 @@ class EB_NeRDDataset(Dataset):
         
     def transform(self):
             # Map the article ids to the lookup table (not sure what this value should represent, I think it's the tokenized title)
-            self.X = self.X.pipe(
+            self.data = self.X.pipe(
                 map_list_article_id_to_value,
                 behaviors_column='article_id_fixed',
                 mapping=self.lookup_article_index,
@@ -161,46 +159,48 @@ class EB_NeRDDataset(Dataset):
                 drop_nulls=False,
             ) 
             
-            if not self.wu_sampling:
-                repeats = np.array(self.X["n_samples"])
-                # =>
-                self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
-                # =>
-                his_input_title = repeat_by_list_values_from_matrix(
-                    self.X['article_id_fixed'].to_list(),
-                    matrix=self.lookup_article_matrix,
-                    repeats=repeats,
-                )
-                # =>
-                mask_his_input_title = repeat_by_list_values_from_matrix(
-                    self.X['article_id_fixed'].to_list(),
-                    matrix=self.lookup_article_matrix_mask,
-                    repeats=repeats,
-                )
-                # =>
-                pred_input_title = self.lookup_article_matrix[
-                    self.X['article_ids_inview'].explode().to_list()
-                ]
-                mask_pred_input_title = self.lookup_article_matrix_mask[
-                    self.X['article_ids_inview'].explode().to_list()
-                ]
-                     
-            else:                
-                self.y = np.array(self.y.to_list())
-                # self.c_y = np.array(self.c_y.to_list() ) 
-                    
-                his_input_title = self.lookup_article_matrix[
-                    self.X['article_id_fixed'].to_list()
-                ]
-                mask_his_input_title = self.lookup_article_matrix_mask[
-                    self.X['article_id_fixed'].to_list()
-                ]
-                pred_input_title = self.lookup_article_matrix[
-                    self.X['article_ids_inview'].to_list()
-                ]
-                mask_pred_input_title = self.lookup_article_matrix_mask[
-                    self.X['article_ids_inview'].to_list()
-                ]
+            # if self.eval_mode or not self.wu_sampling:
+            #     # n_samples in eval mode is the max number of articles in the inview list
+            #     repeats = np.array(self.X["n_samples"])
+            #     # =>
+            #     # Shape of y is (n_datapoints * n_samples, 1) #TODO: check if this is correct
+            #     self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
+            #     # =>
+            #     # Shape of his_input_title is (n_datapoints * n_samples, history_size, ..., max_title_length)
+            #     his_input_title = repeat_by_list_values_from_matrix(
+            #         self.X['article_id_fixed'].to_list(),
+            #         matrix=self.lookup_article_matrix,
+            #         repeats=repeats,
+            #     )
+            #     # =>
+            #     mask_his_input_title = repeat_by_list_values_from_matrix(
+            #         self.X['article_id_fixed'].to_list(),
+            #         matrix=self.lookup_article_matrix_mask,
+            #         repeats=repeats,
+            #     )
+            #     # =>
+            #     pred_input_title = self.lookup_article_matrix[
+            #         self.X['article_ids_inview'].explode().to_list()
+            #     ]
+            #     mask_pred_input_title = self.lookup_article_matrix_mask[
+            #         self.X['article_ids_inview'].explode().to_list()
+            #     ]
+                                     
+            self.y = np.array(self.y.to_list())
+            # self.c_y = np.array(self.c_y.to_list() ) 
+                
+            his_input_title = self.lookup_article_matrix[
+                self.data['article_id_fixed'].to_list()
+            ]
+            mask_his_input_title = self.lookup_article_matrix_mask[
+                self.data['article_id_fixed'].to_list()
+            ]
+            pred_input_title = self.lookup_article_matrix[
+                self.data['article_ids_inview'].to_list()
+            ]
+            mask_pred_input_title = self.lookup_article_matrix_mask[
+                self.data['article_ids_inview'].to_list()
+            ]
             
             pred_input_title = np.squeeze(pred_input_title, axis=2)
             mask_pred_input_title = np.squeeze(mask_pred_input_title, axis=2)
@@ -259,23 +259,31 @@ class EB_NeRDDataset(Dataset):
     def generate_ner_tag(self):        
         test1 = self.df_articles.select(pl.col('ner_clusters'))
         test2 = self.df_articles.select(pl.col('title'))
-        article_ids = self.df_articles.select(pl.col('article_id')) 
-        internal = False
+        article_ids = self.df_articles.select(pl.col('article_id'))         
         article_ner_dict = {}
-        max = 28 #shape of the embedding
+        max = 28 #shape of the embedding        
         for article_id, elem, elem2 in zip(article_ids.to_series().to_list(), test2.to_series().to_list(), test1.to_series().to_list()):
             vector = []
+            internal = False
+            elem2 =[word for entry in elem2 for word in entry.split()]
             for i in elem.split():
                 if internal and i in elem2:
+                    
                     vector.append(2)
                 elif i in elem2:
+                    
+                    print(i) 
+                    print(elem2) 
+                    print(elem)               
                     vector.append(1)
                     internal = True
+                    
                 else:
                     vector.append(0)
-                    internal = False                
+                    internal = False              
+                
             article_ner_dict[article_id] = vector
-        
+
         labels = []
         for elem in self.df_behaviors['article_ids_inview']:
             vectors = []
