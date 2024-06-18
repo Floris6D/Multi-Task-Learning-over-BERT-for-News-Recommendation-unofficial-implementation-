@@ -272,9 +272,9 @@ class EB_NeRDDataset(Dataset):
                     vector.append(2)
                 elif i in elem2:
                     
-                    print(i) 
-                    print(elem2) 
-                    print(elem)               
+                    # print(i) 
+                    # print(elem2) 
+                    # print(elem)               
                     vector.append(1)
                     internal = True
                     
