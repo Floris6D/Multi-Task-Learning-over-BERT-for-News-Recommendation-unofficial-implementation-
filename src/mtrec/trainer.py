@@ -218,6 +218,11 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 best_news_encoder = copy.deepcopy(news_encoder)
                 
                 # Calculate the metrics #TODO look at dimensions of scores and labels
+                print("Information for calculating metrics")
+                print(f"The shape of the scores is {total_scores.shape}")
+                print(f"The shape of the labels is {total_labels.shape}")
+                print("The input to the metric evaluator should be lists of lists. Converting the tensors to lists.")
+                print("Outside list has the length of the number of data points. Inside list should have the length of the number of inview news articles and should differ.")
                 metrics = MetricEvaluator(
                     labels=total_labels.to_list(),
                     predictions=total_scores.to_list(),
