@@ -21,7 +21,7 @@ def get_dataloaders(cfg):
     tokenizer = BertTokenizer.from_pretrained(cfg['model']['pretrained_model_name'])
     return (DataLoader(
                     EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split, override_eval2false= True),
-                    batch_size=cfg["trainer"]["batch_size"], shuffle=True, num_workers=16, drop_last=-True) 
+                    batch_size=cfg["trainer"]["batch_size"], shuffle=True, num_workers=16, drop_last=True) 
                     for split in ['train', 'validation'] #TODO: add test, need to download
                     )	
 
