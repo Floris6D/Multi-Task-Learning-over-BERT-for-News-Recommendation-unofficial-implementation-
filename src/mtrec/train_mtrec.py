@@ -45,6 +45,8 @@ def main():
     # results = test(news_encoder,
     #                user_encoder, 
     #                dataloader_test)
+    
+    #TODO: JE: Make submission file
 
 if __name__ == "__main__":
     main()

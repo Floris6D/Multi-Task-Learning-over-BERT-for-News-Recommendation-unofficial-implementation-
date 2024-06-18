@@ -17,6 +17,7 @@ sys.path.insert(0, parent_dir)
 from metrics._ranking import mrr_score
 from metrics._ranking import ndcg_score
 from metrics._classification import auc_score_custom
+from src.ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
 def cross_product(user_embedding, news_embedding):
     """
@@ -181,6 +182,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             news_encoder.eval()
             total_loss_val, total_main_loss_val = 0 , 0
             total_scores, total_labels = torch.Tensor([]), torch.Tensor([])
+            df_val_data = dataloader_val.dataset.X
             for data in tqdm.tqdm(dataloader_val):
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
@@ -209,7 +211,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             print(f"Validation total Loss: {total_loss_val}")
             print(f"Validation main Loss: {total_main_loss_val}")
             #saving best models
-            if total_loss_val < best_loss:   
+            if total_loss_val < best_loss: #TODO: best loss is set to 0, should be set to infinity  
                 #TODO: calculate performance metrics
                 print(f"total loss val: {total_loss_val}")
                 print(f"best loss: {best_loss}")              
@@ -222,7 +224,15 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 torch.save(news_encoder.state_dict(), save_path + '/news_encoder.pth')
                 best_user_encoder = copy.deepcopy(user_encoder)
                 best_news_encoder = copy.deepcopy(news_encoder)
-            print(f"Validation Loss: {total_loss_val}")
+                
+                # Calculate the metrics #TODO look at dimensions of scores and labels
+                metrics = MetricEvaluator(
+                    labels=df_validation["labels"].to_list(),
+                    predictions=df_validation["scores"].to_list(),
+                    metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
+                )
+                metrics.evaluate()
+
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best models so far.")
     

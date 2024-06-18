@@ -40,16 +40,10 @@ class EB_NeRDDataset(Dataset):
             
         # Now load the data (article_id_fixed is the history, generated using truncate history)
         COLUMNS = ['user_id', 'article_id_fixed', 'article_ids_inview', 'article_ids_clicked', 'impression_id']
-        self.load_data(COLUMNS)
-      
-        # Now tokenize the data and create the lookup tables
-        self.tokenize_data()
-        
-        # Now create the X and y
-        self.X = self.df_behaviors.drop('labels').with_columns(
-            pl.col('article_ids_inview').list.len().alias('n_samples')
-        ) #Drop labels and add n_samples (which is the number of articles in the inview list)
-        self.y = self.df_behaviors['labels']       
+        self.load_behaviors(COLUMNS)
+
+        # Now load and tokenize the data of the articles and create the lookup tables
+        self.load_tokenize_articles()
         
         self.create_category_labels()
 
@@ -74,7 +68,7 @@ class EB_NeRDDataset(Dataset):
         return x, y
 
     
-    def load_data(self, COLUMNS):
+    def load_behaviors(self, COLUMNS):
         FULL_PATH = os.path.join(self.data_dir, self.split)
         # Load the data
         df_history = (
@@ -118,10 +112,17 @@ class EB_NeRDDataset(Dataset):
 
         # Store the behaviors in the class
         self.df_behaviors = df_behaviors
+        
+        # Now create the X and y
+        self.X = self.df_behaviors.drop('labels').with_columns(
+            pl.col('article_ids_inview').list.len().alias('n_samples')
+        ) #Drop labels and add n_samples (which is the number of articles in the inview list)
+        self.y = self.df_behaviors['labels']  
+        
+    def load_tokenize_articles(self):
         # Load the article data
         self.df_articles = pl.read_parquet(os.path.join(self.data_dir, 'articles.parquet'))
         
-    def tokenize_data(self):
         # This concatenates the title with the subtitle in the DF, the cat_cal is the column name
         #TODO: JE: Maybe also add subtitle for prediction
         #df_articles, cat_cal = concat_str_columns(df = self.df_articles, columns=['subtitle', 'title'])
@@ -144,7 +145,7 @@ class EB_NeRDDataset(Dataset):
         
     def transform(self):
             # Map the article ids to the lookup table (not sure what this value should represent, I think it's the tokenized title)
-            self.X = self.X.pipe(
+            self.data = self.X.pipe(
                 map_list_article_id_to_value,
                 behaviors_column='article_id_fixed',
                 mapping=self.lookup_article_index,
@@ -189,16 +190,16 @@ class EB_NeRDDataset(Dataset):
             # self.c_y = np.array(self.c_y.to_list() ) 
                 
             his_input_title = self.lookup_article_matrix[
-                self.X['article_id_fixed'].to_list()
+                self.data['article_id_fixed'].to_list()
             ]
             mask_his_input_title = self.lookup_article_matrix_mask[
-                self.X['article_id_fixed'].to_list()
+                self.data['article_id_fixed'].to_list()
             ]
             pred_input_title = self.lookup_article_matrix[
-                self.X['article_ids_inview'].to_list()
+                self.data['article_ids_inview'].to_list()
             ]
             mask_pred_input_title = self.lookup_article_matrix_mask[
-                self.X['article_ids_inview'].to_list()
+                self.data['article_ids_inview'].to_list()
             ]
             
             pred_input_title = np.squeeze(pred_input_title, axis=2)
