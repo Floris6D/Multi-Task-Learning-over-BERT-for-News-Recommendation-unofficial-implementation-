@@ -161,7 +161,8 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 scores = scoring_function(user_embeddings, inview_news_embeddings)
                 main_loss = criterion(scores, labels)
                 # Backpropagation           
-                optimizer.pc_backward([main_loss, cat_loss, ner_loss])
+                #optimizer.pc_backward([main_loss, cat_loss, ner_loss])
+                main_loss.backward()
                 optimizer.step()
                 total_loss += main_loss.item() + cat_loss.item() + ner_loss.item()
                 total_main_loss += main_loss.item()
