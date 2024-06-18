@@ -11,9 +11,9 @@ user_encoder:
 trainer:
   optimizer: adam
   epochs: 40
-  lr_user: 1e-03
-  lr_news: 1e-03
-  lr_bert: 1e-05
+  lr_user: 0.001
+  lr_news: 0.001
+  lr_bert: 0.00001
   batch_size: 16
 
 dataset:
