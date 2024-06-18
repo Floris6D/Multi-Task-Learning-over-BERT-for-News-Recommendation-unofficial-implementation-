@@ -128,6 +128,24 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
         print("Invalid optimizer <{}>.".format(cfg["optimizer"]))
         return
     
+    # Create a list of parameter names and their corresponding parameters for all models
+    def get_param_names(model):
+        return {id(param): name for name, param in model.named_parameters()}
+
+    news_encoder_param_names = get_param_names(news_encoder)
+    user_encoder_param_names = get_param_names(user_encoder)
+
+    # Combine all parameter names
+    param_names = {**news_encoder_param_names, **user_encoder_param_names}
+
+    # Print optimizer parameters along with their names
+    for param_group in optimizer.param_groups:
+        print(f"Learning rate: {param_group['lr']}")
+        print(f"Weight decay: {param_group['weight_decay']}")
+        for param in param_group['params']:
+            name = param_names[id(param)]
+            print(f"Name: {name}, Size: {param.size()}, Requires Grad: {param.requires_grad}")
+
     #optimizer = PCGrad(optimizer)
     
     #initialize to track best

@@ -38,17 +38,6 @@ def main():
     user_encoder = UserEncoder(**cfg['user_encoder'])
     news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert)
 
-    for name, param in news_encoder.named_parameters():
-        if param.requires_grad:
-            print(f"Trainable parameter news_encoder: {name}")
-    
-    for name, param in user_encoder.named_parameters():
-        if param.requires_grad:
-            print(f"Trainable parameter user_encoder: {name}")
-    
-    for name, param in bert.named_parameters():
-        if param.requires_grad:
-            print(f"Trainable parameter bert: {name}")
     
     
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
