@@ -81,7 +81,8 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     """
     bs, N1, tl1, num_ner = p1.shape
     bs, N2, tl2, num_ner = p2.shape
-       
+    print(p1.shape, p2.shape)
+    print(l1.shape, l2.shape)   
     p1 = p1.reshape(bs*N1*tl1, num_ner)
     p2 = p2.reshape(bs*N2*tl2, num_ner)
     l1 = l1.reshape(bs*N1*tl1)
