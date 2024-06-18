@@ -8,7 +8,7 @@ from transformers import BertTokenizer, BertModel
 
 from user_encoder import UserEncoder
 from news_encoder import NewsEncoder
-from trainer import train, test
+from trainer import train
 
 def load_configuration(config):
     file_path = f'src/mtrec/configs/{config}.yml'
