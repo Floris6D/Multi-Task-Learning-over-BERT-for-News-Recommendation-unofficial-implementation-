@@ -17,7 +17,7 @@ sys.path.insert(0, parent_dir)
 from metrics._ranking import mrr_score
 from metrics._ranking import ndcg_score
 from metrics._classification import auc_score_custom
-from src.ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
+from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
 def cross_product(user_embedding, news_embedding):
     """
