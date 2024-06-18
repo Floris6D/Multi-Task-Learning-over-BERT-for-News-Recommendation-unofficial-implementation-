@@ -9,7 +9,7 @@ from transformers import BertTokenizer, BertModel
 from user_encoder import UserEncoder
 from news_encoder import NewsEncoder
 from trainer import train
-#from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model
 
 def load_configuration(config):
     file_path = f'src/mtrec/configs/{config}.yml'
@@ -33,7 +33,7 @@ def main():
     
 
     bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name'])
-    #bert = get_peft_model(bert, LoraConfig(cfg["lora_config"]))
+    bert = get_peft_model(bert, LoraConfig(cfg["lora_config"]))
     
     user_encoder = UserEncoder(**cfg['user_encoder'])
     news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert)
