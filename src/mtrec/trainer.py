@@ -12,7 +12,7 @@ from gradient_surgery import PCGrad
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
 
-class TestNet(nn.Module):
+class TestNet(nn.Module): #TODO: remove this
     def __init__(self, input_dim=2*768, output_dim=1, hidden_dim=128):
         super(TestNet, self).__init__()
         self.fc = nn.Sequential(
@@ -158,6 +158,9 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
         dataloader_val (torch.utils.data.DataLoader): The dataloader for the validation dataset.
         device (torch.device): The device to be used for training.
     """
+    
+
+    
 
     #initialize optimizer
     params = [
@@ -167,6 +170,12 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
         {"params": news_encoder.bert.parameters(), "lr": cfg["lr_bert"]}  # Parameters of BERT
     ] 
 
+    # #TODO: remove this
+    # test_net = TestNet()
+    # params += list(test_net.parameters())
+
+
+
     if cfg["optimizer"] == "adam":
         optimizer = torch.optim.Adam(params)
     elif cfg["optimizer"] == "sgd":
@@ -175,7 +184,13 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
         print("Invalid optimizer <{}>.".format(cfg["optimizer"]))
         return
 
-    #optimizer = PCGrad(optimizer)
+
+    #TURNEMALLON
+    for param_group in optimizer.param_groups:
+        for param in param_group['params']:
+            param.requires_grad=True
+
+    #optimizer = PCGrad(optimizer) #TODO: PCGrad
     
     #initialize to track best
     total_loss, total_main_loss, best_loss, save_num = 0, 0, 0, 0
@@ -207,7 +222,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 scores = scoring_function(user_embeddings, inview_news_embeddings)
                 main_loss = criterion(scores, labels)
                 # Backpropagation           
-                #optimizer.pc_backward([main_loss, cat_loss, ner_loss])
+                #optimizer.pc_backward([main_loss, cat_loss, ner_loss]) #TODO: PCGrad
                 main_loss.backward()
                 optimizer.step()
                 total_loss += main_loss.item() + cat_loss.item() + ner_loss.item()
