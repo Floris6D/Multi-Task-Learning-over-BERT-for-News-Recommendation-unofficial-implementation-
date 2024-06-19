@@ -97,7 +97,7 @@ class Mtrec:
         self.user_encoder.eval()
         self.news_encoder.eval()
         
-        total_scores, total_labels = np.array([]), np.array([])
+        total_scores, total_labels = [], []
         for data in dataloader_test:
             # Get the data
             (user_histories, user_mask, news_tokens, news_mask), (labels, _, _, _, _) = get2device(data, self.device)
@@ -110,20 +110,20 @@ class Mtrec:
             # MAIN task: Click prediction
             scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
             
-            # Now save the scores in lists and remove the padding
-            total_scores = np.concatenate([total_scores, scores], axis=0)
-            
-        # Now save the labels in lists and remove the padding
-        final_score = []
-        for row_idx in total_scores.shape[0]:
-            row_score = total_scores[row_idx, :]
-            # Remove the padding
-            row_score = row_score[row_score != 0]
-            final_score.append(row_score.tolist())
-        
-        
-        # # Get the original data from the dataloader
-        # df_test_data = dataloader_test.dataset.X
+            # Now save the scores and labels in lists and remove the padding
+            for row_idx in range(scores.shape[0]):
+                row_score = scores[row_idx, :]
+                row_label = labels[row_idx, :]
+                # Remove the padding
+                row_score = row_score[row_score != 0]
+                
+                # Apply softmax
+                row_score = torch.nn.functional.softmax(row_score, dim=0)
+
+                total_scores.append(row_score.tolist())
+                total_labels.append(row_label.tolist())
+                
+        return total_scores, total_labels
         
 
     
