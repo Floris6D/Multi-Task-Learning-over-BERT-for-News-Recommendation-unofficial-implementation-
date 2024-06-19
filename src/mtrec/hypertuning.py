@@ -21,13 +21,13 @@ def test_config(trial, cfg, bert):
     cfg = copy.deepcopy(cfg)
     hcf = cfg["hypertuning"]
     # Categorical net
-    cfg["news_encoder"]["cfg_cat"]["hidden_size"] = trial.suggest_categorical("hidden_size", hcf["hidden_size"])
-    cfg["news_encoder"]["cfg_cat"]["num_layers"] = trial.suggest_int("num_layers", hcf["num_layers"]["min"], hcf["num_layers"]["max"])
+    cfg["news_encoder"]["cfg_cat"]["hidden_size"] = trial.suggest_categorical("cat_hidden_size", hcf["hidden_size"])
+    cfg["news_encoder"]["cfg_cat"]["num_layers"] = trial.suggest_int("cat_num_layers", hcf["num_layers"]["min"], hcf["num_layers"]["max"])
     # NER net
-    cfg["news_encoder"]["cfg_ner"]["num_layers"] = trial.suggest_categorical("hidden_size", hcf["hidden_size"])
-    cfg["news_encoder"]["cfg_ner"]["hidden_size"] = trial.suggest_int("hidden_size", hcf["hidden_size"]["min"], hcf["hidden_size"]["max"])
+    cfg["news_encoder"]["cfg_ner"]["hidden_size"] = trial.suggest_categorical("ner_hidden_size", hcf["hidden_size"])
+    cfg["news_encoder"]["cfg_ner"]["num_layers"] = trial.suggest_int("ner_hidden_size", hcf["num_layers"]["min"], hcf["num_layers"]["max"])
     # User encoder
-    cfg["user_encoder"]["hidden_size"] = trial.suggest_categorical("hidden_size", hcf["hidden_size"])
+    cfg["user_encoder"]["hidden_size"] = trial.suggest_categorical("user_hidden_size", hcf["hidden_size"])
     #Training
     cfg["trainer"]["batch_size"] = trial.suggest_categorical("batch_size", hcf["batch_size"])
     cfg["trainer"]["lr_user"] = trial.suggest_loguniform("lr", hcf["lr"]["min"], hcf["lr"]["max"])
