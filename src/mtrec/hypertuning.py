@@ -20,19 +20,24 @@ import copy
 def test_config(trial, cfg, bert):
     cfg = copy.deepcopy(cfg)
     hcf = cfg["hypertuning"]
+    hidden_sizes = [int(x) for x in hcf["hidden_size"]]
+    nl_min, nl_max = int(hcf["num_layers"]["min"]), int(hcf["num_layers"]["max"])
+    lr_min, lr_max = hcf["lr"]["min"], hcf["lr"]["max"]
+    batch_sizes = int(hcf["batch_size"])
     # Categorical net
-    cfg["news_encoder"]["cfg_cat"]["hidden_size"] = trial.suggest_categorical("cat_hidden_size", hcf["hidden_size"])
-    cfg["news_encoder"]["cfg_cat"]["num_layers"] = trial.suggest_int("cat_num_layers", hcf["num_layers"]["min"], hcf["num_layers"]["max"])
+    cfg["news_encoder"]["cfg_cat"]["hidden_size"] = trial.suggest_categorical("cat_hidden_size", hidden_sizes)
+    cfg["news_encoder"]["cfg_cat"]["num_layers"] = trial.suggest_int("cat_num_layers", nl_min, nl_max)
     # NER net
-    cfg["news_encoder"]["cfg_ner"]["hidden_size"] = trial.suggest_categorical("ner_hidden_size", hcf["hidden_size"])
-    cfg["news_encoder"]["cfg_ner"]["num_layers"] = trial.suggest_int("ner_num_layers", hcf["num_layers"]["min"], hcf["num_layers"]["max"])
+    cfg["news_encoder"]["cfg_ner"]["hidden_size"] = trial.suggest_categorical("ner_hidden_size", hidden_sizes)
+    cfg["news_encoder"]["cfg_ner"]["num_layers"] = trial.suggest_int("ner_num_layers", nl_min, nl_max)
     # User encoder
-    cfg["user_encoder"]["hidden_size"] = trial.suggest_categorical("user_hidden_size", hcf["hidden_size"])
+    cfg["user_encoder"]["hidden_size"] = trial.suggest_categorical("user_hidden_size", hidden_sizes)
     #Training
-    cfg["trainer"]["batch_size"] = trial.suggest_categorical("batch_size", hcf["batch_size"])
-    cfg["trainer"]["lr_user"] = trial.suggest_loguniform("lr_user", hcf["lr"]["min"], hcf["lr"]["max"])
-    cfg["trainer"]["lr_news"] = trial.suggest_loguniform("lr_news", hcf["lr"]["min"], hcf["lr"]["max"])
-    cfg["trainer"]["lr_bert"] = trial.suggest_loguniform("lr_bert", hcf["lr"]["min"], hcf["lr"]["max"])
+    cfg["trainer"]["batch_size"] = trial.suggest_categorical("batch_size", batch_sizes)
+    
+    cfg["trainer"]["lr_user"] = trial.suggest_loguniform("lr_user", lr_min, lr_max)
+    cfg["trainer"]["lr_news"] = trial.suggest_loguniform("lr_news", lr_min, lr_max)
+    cfg["trainer"]["lr_bert"] = trial.suggest_loguniform("lr_bert", lr_min, lr_max)
     
 
     embedding_dim = bert.config.hidden_size
