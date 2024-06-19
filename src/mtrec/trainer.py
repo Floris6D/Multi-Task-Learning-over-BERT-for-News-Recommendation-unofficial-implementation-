@@ -214,14 +214,13 @@ def train(model, dataloader_train, dataloader_val, cfg,
                     print(f"total loss val: {total_loss_val}")
                     print(f"best loss: {best_loss}")
                 model.save_model(save_path)
-                best_user_encoder = copy.deepcopy(model.user_encoder)
-                best_news_encoder = copy.deepcopy(model.news_encoder)
+                best_model = copy.deepcopy(model)
                 
 
     except KeyboardInterrupt:
-        print(f"Training interrupted @{epoch}. Returning the best models so far.")
+        print(f"Training interrupted @{epoch}. Returning the best model so far.")
     
-    return best_user_encoder, best_news_encoder, best_loss
+    return best_model, best_loss
 
 # # Calculate the metrics #TODO look at dimensions of scores and labels
 # if print_flag:
