@@ -2,7 +2,7 @@ import torch
 from transformers import BertModel
 
 class NewsEncoder(torch.nn.Module):
-    def __init__(self, embedding_dim, num_ner, bert, cfg_cat, cfg_ner):
+    def __init__(self, embedding_dim, bert, cfg_cat, cfg_ner):
         super(NewsEncoder, self).__init__()
         self.cat_net = self.initialize_network(embedding_dim, cfg_cat)
         self.ner_net = self.initialize_network(embedding_dim, cfg_ner)
