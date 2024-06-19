@@ -185,7 +185,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
     #optimizer = PCGrad(optimizer) #TODO: PCGrad
     
     #initialize to track best
-    total_loss, total_main_loss, save_num = 0, 0, 0, 0
+    #total_loss, total_main_loss, save_num = 0, 0, 0, 0
     best_loss = float('inf')
     while os.path.exists(save_dir+f'/run{save_num}'):
         save_num += 1
@@ -205,7 +205,6 @@ def train(model, dataloader_train, dataloader_val, cfg,
             
             #saving best models
             if total_loss_val < best_loss: #TODO: best loss is set to 0, should be set to infinity  
-                #TODO: calculate performance metrics
                 best_loss = total_loss_val
                 if print_flag:
                     print(f"total loss val: {total_loss_val}")
@@ -213,30 +212,29 @@ def train(model, dataloader_train, dataloader_val, cfg,
                     print("Saving model @{epoch}")
                     print(f"total loss val: {total_loss_val}")
                     print(f"best loss: {best_loss}")
-                
                 model.save_model(save_path)
                 best_user_encoder = copy.deepcopy(model.user_encoder)
                 best_news_encoder = copy.deepcopy(model.news_encoder)
                 
-                
-                # # Calculate the metrics #TODO look at dimensions of scores and labels
-                # if print_flag:
-                #     print("Information for calculating metrics")
-                #     print(f"The shape of the scores is {total_scores.shape}")
-                #     print(f"The shape of the labels is {total_labels.shape}")
-                #     print("The input to the metric evaluator should be lists of lists. Converting the tensors to lists.")
-                #     print("Outside list has the length of the number of data points. Inside list should have the length of the number of inview news articles and should differ.")
-                # metrics = MetricEvaluator(
-                #     labels=total_labels.to_list(),
-                #     predictions=total_scores.to_list(),
-                #     metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
-                # )
-                # metrics.evaluate()
 
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best models so far.")
     
     return best_user_encoder, best_news_encoder, best_loss
+
+# # Calculate the metrics #TODO look at dimensions of scores and labels
+# if print_flag:
+#     print("Information for calculating metrics")
+#     print(f"The shape of the scores is {total_scores.shape}")
+#     print(f"The shape of the labels is {total_labels.shape}")
+#     print("The input to the metric evaluator should be lists of lists. Converting the tensors to lists.")
+#     print("Outside list has the length of the number of data points. Inside list should have the length of the number of inview news articles and should differ.")
+# metrics = MetricEvaluator(
+#     labels=total_labels.to_list(),
+#     predictions=total_scores.to_list(),
+#     metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
+# )
+# metrics.evaluate()
 
 # # Add the ebrec/evaluation directory to sys.path
 # current_dir = os.path.dirname(os.path.abspath(__file__))
