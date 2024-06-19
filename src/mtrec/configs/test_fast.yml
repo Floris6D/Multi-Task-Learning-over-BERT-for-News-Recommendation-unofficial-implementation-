@@ -1,0 +1,37 @@
+news_encoder:
+  input_size: 768 #TODO link to bert instead of hardcode
+  embedding_dim: 16
+  num_classes: 25 #TODO link to dataset instead of hardcode
+  num_ner: 3
+
+user_encoder:
+  input_size: 768 #TODO link to bert instead of hardcode
+  embedding_dim: 16
+
+trainer:
+  optimizer: adam
+  epochs: 40
+  lr_user: 0.001
+  lr_news: 0.001
+  lr_bert: 0.00001
+  batch_size: 16
+
+dataset:
+  data_dir: data_demo
+  history_size: 15
+  max_title_length: 20
+  npratio: 4
+  dataset_fraction: 0.01
+
+model:
+  hidden: 768
+  pretrained_model_name: bert-base-multilingual-uncased
+
+lora_config:
+  r: 8  # Rank of the decomposition
+  lora_alpha: 32  # Scaling factor
+  target_modules:
+    - "query"
+    - "value"  # Targeted modules in BERT
+  lora_dropout: 0.1  # Dropout rate
+  bias: "none"  # Bias type 

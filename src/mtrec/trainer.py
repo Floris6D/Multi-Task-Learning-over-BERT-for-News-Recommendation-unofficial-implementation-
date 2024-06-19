@@ -22,8 +22,27 @@ def cross_product(user_embedding, news_embedding):
     Returns:
         torch.Tensor: Batch_size * N tensor of scores.
     """
+    bsu, emb_dimu = user_embedding.shape
+    bsn, N, emb_dimn = news_embedding.shape
+    assert bsu == bsn , "Batch sizes of user and news embeddings do not match"
+    assert emb_dimu == emb_dimn, "Embedding dimensions of user and news embeddings do not match"
     scores = torch.einsum("bk,bik->bi",user_embedding, news_embedding)
     return scores
+
+# def test_cross_product():
+#     u = torch.tensor([[1, 0], [0, 1], [1, 0]], dtype=torch.float32)
+#     n = torch.tensor([[[1, 0], [0, 1]], [[0, 1], [1, 0]], [[1, 0], [0, 1]]], dtype=torch.float32)
+#     print(f"scores 1 :{cross_product(u, n)}")
+#     n = torch.tensor([[[.1,.2], [.3,.4]], [[.5,.6], [.7,.8]], [[.9,.1], [.2,.3]]], dtype=torch.float32)
+#     print(f"scores 2 :{cross_product(u, n)}")
+
+
+def print_optimizer_parameters(optimizer):
+    for i, param_group in enumerate(optimizer.param_groups):
+        print(f"Parameter group {i}:")
+        for param in param_group['params']:
+            print(f"Parameter: {param}")
+            print(f"Requires Grad: {param.requires_grad}")
 
 def cosine_sim(user_embedding, news_embedding):
     """
@@ -51,7 +70,19 @@ def main_loss(scores, labels, normalization = True):
         scores = scores / sum_exp  # normalize the scores to sum to 1
     sum_exp = torch.sum(torch.exp(scores), dim = 1)
     pos_scores = torch.sum(scores * labels, axis = 1)
-    return -torch.log(torch.exp(pos_scores)/sum_exp).mean() #no need for sum since only one positive label
+    return -torch.log(torch.exp(pos_scores)/sum_exp).sum() 
+
+
+# def test_main_loss():
+#     labels = torch.tensor([[1, 0], [0, 1], [1, 0]], dtype=torch.float32)
+#     scores = torch.tensor([[1, 0], [0, 1], [1, 0]], dtype=torch.float32)
+#     print("best loss: ", main_loss(scores, labels))
+#     scores = torch.tensor([[0, 1], [1, 0], [0, 1]], dtype=torch.float32)
+#     print("worst loss: ", main_loss(scores, labels))
+#     scores = torch.tensor([[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]], dtype=torch.float32)
+#     print("random loss: ", main_loss(scores, labels))
+
+
 
 # def category_loss(predicted_probs, labels):
 #     r, c = predicted_probs.shape
@@ -79,10 +110,9 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     First we untangle all the NER predictions and labels
     Then apply cross entropy loss
     """
+    
     bs, N1, tl1, num_ner = p1.shape
-    bs, N2, tl2, num_ner = p2.shape
-    # print(p1.shape, p2.shape)
-    # print(l1.shape, l2.shape)   
+    bs, N2, tl2, num_ner = p2.shape   
     p1 = p1.reshape(bs*N1*tl1, num_ner)
     p2 = p2.reshape(bs*N2*tl2, num_ner)
     l1 = l1[:,:,:tl1].reshape(bs*N1*tl1)
@@ -95,6 +125,7 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     predictions = predictions[mask.bool()]
     labels = torch.cat([l1, l2], dim = 0).long()
     labels = torch.masked_select(labels, mask.bool())
+
     return nn.CrossEntropyLoss()(predictions, labels) 
     
 def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cross_product,
@@ -112,6 +143,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
         dataloader_val (torch.utils.data.DataLoader): The dataloader for the validation dataset.
         device (torch.device): The device to be used for training.
     """
+
     #initialize optimizer
     params = [
         {"params": [user_encoder.W,  user_encoder.q],   "lr": cfg["lr_user"]},  # lr of attention layer in user encoder
@@ -141,7 +173,6 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     try: #training can be interrupted by catching KeyboardInterrupt
         #training
         for epoch in range(cfg['epochs']):
-            
             print(f"Epoch {epoch} / {cfg['epochs']}")
             news_encoder.train()
             user_encoder.train()
@@ -166,6 +197,8 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 optimizer.step()
                 total_loss += main_loss.item() + cat_loss.item() + ner_loss.item()
                 total_main_loss += main_loss.item()
+                print_optimizer_parameters(optimizer)
+                break
             total_loss /= len(dataloader_train)
             total_main_loss /= len(dataloader_train)
             print(f"Training total Loss: {total_loss}")
