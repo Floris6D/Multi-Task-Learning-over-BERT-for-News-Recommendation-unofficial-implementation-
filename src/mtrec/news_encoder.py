@@ -6,6 +6,7 @@ class NewsEncoder(torch.nn.Module):
         super(NewsEncoder, self).__init__()
         self.cat_net = self.initialize_network(embedding_dim, cfg_cat)
         self.ner_net = self.initialize_network(embedding_dim, cfg_ner)
+        self.num_ner = cfg_ner["output_size"]
         self.bert = bert
 
     def initialize_network(self, input_size, cfg, act_fn = torch.nn.ReLU()):
