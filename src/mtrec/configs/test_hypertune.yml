@@ -13,7 +13,7 @@ user_encoder:
 
 trainer:
   optimizer: adam
-  epochs: 10
+  epochs: 1
   lr_user: 0 #Tuned
   lr_news: 0 #Tuned
   lr_bert: 0 #Tuned
@@ -24,7 +24,7 @@ dataset:
   history_size: 15
   max_title_length: 20
   npratio: 4
-  dataset_fraction: 0.05
+  dataset_fraction: 0.01
 
 model:
   hidden: 768
