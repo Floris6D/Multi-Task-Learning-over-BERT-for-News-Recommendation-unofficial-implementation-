@@ -10,21 +10,8 @@ from user_encoder import UserEncoder
 from news_encoder import NewsEncoder
 from trainer import train
 from peft import LoraConfig, get_peft_model
+from utils import load_configuration, get_dataloaders
 
-
-def load_configuration(config):
-    file_path = f'src/mtrec/configs/{config}.yml'
-    with open(file_path, 'r') as file:
-        configuration = yaml.safe_load(file)
-    return configuration
-
-def get_dataloaders(cfg):
-    tokenizer = BertTokenizer.from_pretrained(cfg['model']['pretrained_model_name'])
-    return (DataLoader(
-                    EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split, override_eval2false= True),
-                    batch_size=cfg["trainer"]["batch_size"], shuffle=True, num_workers=16, drop_last=True) 
-                    for split in ['train', 'validation'] #TODO: add test, need to download
-                    )	
 
 def main():
     parser = argparse.ArgumentParser(description='Process some arguments.')

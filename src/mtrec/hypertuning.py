@@ -11,32 +11,31 @@ from news_encoder import NewsEncoder
 from trainer import train
 from peft import LoraConfig, get_peft_model
 
-def load_configuration(config):
-    file_path = f'src/mtrec/configs/{config}.yml'
-    with open(file_path, 'r') as file:
-        configuration = yaml.safe_load(file)
-    return configuration
+import optuna
 
-def get_dataloaders(cfg):
-    tokenizer = BertTokenizer.from_pretrained(cfg['model']['pretrained_model_name'])
-    return (DataLoader(
-                    EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split, override_eval2false= True),
-                    batch_size=cfg["trainer"]["batch_size"], shuffle=True, num_workers=16, drop_last=True) 
-                    for split in ['train', 'validation'] #TODO: add test, need to download
-                    )	
+from functools import partial
+from utils import load_configuration, get_dataloaders
+import copy
 
-def main():
-    parser = argparse.ArgumentParser(description='Process some arguments.')
-    parser.add_argument('--file', default='test', help='Path to the configuration file')
-    args = parser.parse_args()
-    cfg = load_configuration(args.file)
+def test_config(trial, cfg, bert):
+    cfg = copy.deepcopy(cfg)
+    hcf = cfg["hypertuning"]
+    # Categorical net
+    cfg["news_encoder"]["cfg_cat"]["hidden_size"] = trial.suggest_categorical("hidden_size", hcf["hidden_size"])
+    cfg["news_encoder"]["cfg_cat"]["num_layers"] = trial.suggest_int("num_layers", hcf["num_layers"]["min"], hcf["num_layers"]["max"])
+    # NER net
+    cfg["news_encoder"]["cfg_ner"]["num_layers"] = trial.suggest_categorical("hidden_size", hcf["hidden_size"])
+    cfg["news_encoder"]["cfg_ner"]["hidden_size"] = trial.suggest_int("hidden_size", hcf["hidden_size"]["min"], hcf["hidden_size"]["max"])
+    # User encoder
+    cfg["user_encoder"]["hidden_size"] = trial.suggest_categorical("hidden_size", hcf["hidden_size"])
+    #Training
+    cfg["trainer"]["batch_size"] = trial.suggest_categorical("batch_size", hcf["batch_size"])
+    cfg["trainer"]["lr_user"] = trial.suggest_loguniform("lr", hcf["lr"]["min"], hcf["lr"]["max"])
+    cfg["trainer"]["lr_news"] = trial.suggest_loguniform("lr", hcf["lr"]["min"], hcf["lr"]["max"])
+    cfg["trainer"]["lr_bert"] = trial.suggest_loguniform("lr", hcf["lr"]["min"], hcf["lr"]["max"])
     
 
-    bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name'])
-    # Get the embedding dimension
     embedding_dim = bert.config.hidden_size
-    bert = get_peft_model(bert, LoraConfig(cfg["lora_config"]))
-    
     user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim)
     news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim)
 
@@ -49,12 +48,24 @@ def main():
                                        dataloader_train = dataloader_train, 
                                        dataloader_val   = dataloader_val, 
                                        cfg              = cfg["trainer"])
-    return best_validation_loss
-    # results = test(news_encoder,
-    #                user_encoder, 
-    #                dataloader_test)
     
-    #TODO: JE: Make submission file
+    return best_validation_loss
+
+def main():
+    parser = argparse.ArgumentParser(description='Process some arguments.')
+    parser.add_argument('--file', default='test_hypertune', help='Path to the configuration file')
+    args = parser.parse_args()
+    cfg = load_configuration(args.file)
+   
+    bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name'])
+    # Get the embedding dimension
+    bert = get_peft_model(bert, LoraConfig(cfg["lora_config"]))
+    
+    test_config = partial(test_config, cfg = cfg, bert = bert)
+    study = optuna.create_study()
+    study.optimize(test_config, n_trials=100)
+
+    print("best parameters:\n", study.best_params)
 
 if __name__ == "__main__":
     main()

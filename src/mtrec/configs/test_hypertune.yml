@@ -1,0 +1,51 @@
+news_encoder:
+  cfg_cat:
+    num_layers: 0 #Tuned
+    hidden_size: 0 #Tuned
+    output_size: 25
+  cfg_ner:
+    num_layers: 0 #Tuned
+    hidden_size: 0 #Tuned
+    output_size: 3
+
+user_encoder:
+  hidden_size: 0 #Tuned
+
+trainer:
+  optimizer: adam
+  epochs: 10
+  lr_user: 0 #Tuned
+  lr_news: 0 #Tuned
+  lr_bert: 0 #Tuned
+  batch_size: 0 #Tuned
+
+dataset:
+  data_dir: data_demo
+  history_size: 15
+  max_title_length: 20
+  npratio: 4
+  dataset_fraction: 0.05
+
+model:
+  hidden: 768
+  pretrained_model_name: bert-base-multilingual-uncased
+
+lora_config:
+  r: 8  # Rank of the decomposition
+  lora_alpha: 32  # Scaling factor
+  target_modules:
+    - "query"
+    - "value"  # Targeted modules in BERT
+  lora_dropout: 0.1  # Dropout rate
+  bias: "none"  # Bias type 
+
+hypertuning:
+  hidden_size:
+    values: [128, 256, 512]
+  num_layers:
+    min: 1
+    max: 5
+  batch_size:
+    values: [16, 32, 64]
+  lr:
+    values: [0.005, 1e-6]
