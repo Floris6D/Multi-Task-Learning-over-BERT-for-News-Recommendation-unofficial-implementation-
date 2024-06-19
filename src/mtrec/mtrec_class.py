@@ -114,7 +114,7 @@ class Mtrec:
             for row_idx in range(scores.shape[0]):
                 row_score = scores[row_idx, :]
                 row_label = labels[row_idx, :]
-                # Remove the padding
+                # Remove the padding #TODO: JE: Implement this in another way for when no wu sampling is used
                 row_score = row_score[row_score != 0]
                 
                 # Apply softmax
