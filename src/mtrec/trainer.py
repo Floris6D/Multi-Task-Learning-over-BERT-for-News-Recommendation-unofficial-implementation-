@@ -175,7 +175,6 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     # params += list(test_net.parameters())
 
 
-
     if cfg["optimizer"] == "adam":
         optimizer = torch.optim.Adam(params)
     elif cfg["optimizer"] == "sgd":
@@ -185,7 +184,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
         return
 
 
-    #TURNEMALLON
+    #TURNEMALLON TODO: remove this
     for param_group in optimizer.param_groups:
         for param in param_group['params']:
             param.requires_grad=True
@@ -227,8 +226,8 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 optimizer.step()
                 total_loss += main_loss.item() + cat_loss.item() + ner_loss.item()
                 total_main_loss += main_loss.item()
-                print_optimizer_parameters(optimizer)
-                break
+                print_optimizer_parameters(optimizer) #TODO removew
+                return user_encoder, news_encoder
             total_loss /= len(dataloader_train)
             total_main_loss /= len(dataloader_train)
             print(f"Training total Loss: {total_loss}")
