@@ -138,8 +138,9 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
 
     return nn.CrossEntropyLoss()(predictions, labels) 
     
-def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, scoring_function:callable = cross_product,
-          criterion:callable = main_loss,  device:str = "cpu", save_dir:str = "saved_models"):
+def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, 
+          print_flag = True,
+          scoring_function:callable = cross_product, criterion:callable = main_loss,  device:str = "cpu", save_dir:str = "saved_models"):
     """
     Function to train the model on the given dataset.
     
@@ -190,11 +191,11 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
         save_num += 1
     save_path = save_dir+f'/run{save_num}'
     os.makedirs(save_path)
-    print(f"Saving models to {save_path}")
+    if print_flag: print(f"Saving models to {save_path}")
     try: #training can be interrupted by catching KeyboardInterrupt
         #training
         for epoch in range(cfg['epochs']):
-            print(f"Epoch {epoch} / {cfg['epochs']}")
+            if print_flag: print(f"Epoch {epoch} / {cfg['epochs']}")
             news_encoder.train()
             user_encoder.train()
             for data in dataloader_train:
@@ -220,8 +221,9 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 total_main_loss += main_loss.item()
             total_loss /= len(dataloader_train)
             total_main_loss /= len(dataloader_train)
-            print(f"Training total Loss: {total_loss}")
-            print(f"Training main Loss: {total_main_loss}")
+            if print_flag:
+                print(f"Training total Loss: {total_loss}")
+                print(f"Training main Loss: {total_main_loss}")
 
             #validation
             user_encoder.eval()
@@ -230,8 +232,8 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             total_scores, total_labels = torch.Tensor([]), torch.Tensor([])
             #df_val_data = dataloader_val.dataset.X
             for data in dataloader_val:
-                print("SKIPPING VALIDATION FOR DEBUGGING")
-                break
+                if print_flag: print("SKIPPING VALIDATION FOR DEBUGGING")
+                break #TODO remove
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
         
@@ -256,29 +258,31 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             
             total_loss_val /= len(dataloader_val)
             total_main_loss_val /= len(dataloader_val)
-            print(f"Validation total Loss: {total_loss_val}")
-            print(f"Validation main Loss: {total_main_loss_val}")
+            if print_flag: 
+                print(f"Validation total Loss: {total_loss_val}")
+                print(f"Validation main Loss: {total_main_loss_val}")
             #saving best models
             if total_loss_val < best_loss: #TODO: best loss is set to 0, should be set to infinity  
                 #TODO: calculate performance metrics
-                print(f"total loss val: {total_loss_val}")
-                print(f"best loss: {best_loss}")              
-                print("Saving model @{epoch}")
                 best_loss = total_loss_val
-                
-                print(f"total loss val: {total_loss_val}")
-                print(f"best loss: {best_loss}")
+                if print_flag:
+                    print(f"total loss val: {total_loss_val}")
+                    print(f"best loss: {best_loss}")              
+                    print("Saving model @{epoch}")
+                    print(f"total loss val: {total_loss_val}")
+                    print(f"best loss: {best_loss}")
                 torch.save(user_encoder.state_dict(), save_path + '/user_encoder.pth')
                 torch.save(news_encoder.state_dict(), save_path + '/news_encoder.pth')
                 best_user_encoder = copy.deepcopy(user_encoder)
                 best_news_encoder = copy.deepcopy(news_encoder)
                 
                 # Calculate the metrics #TODO look at dimensions of scores and labels
-                print("Information for calculating metrics")
-                print(f"The shape of the scores is {total_scores.shape}")
-                print(f"The shape of the labels is {total_labels.shape}")
-                print("The input to the metric evaluator should be lists of lists. Converting the tensors to lists.")
-                print("Outside list has the length of the number of data points. Inside list should have the length of the number of inview news articles and should differ.")
+                if print_flag:
+                    print("Information for calculating metrics")
+                    print(f"The shape of the scores is {total_scores.shape}")
+                    print(f"The shape of the labels is {total_labels.shape}")
+                    print("The input to the metric evaluator should be lists of lists. Converting the tensors to lists.")
+                    print("Outside list has the length of the number of data points. Inside list should have the length of the number of inview news articles and should differ.")
                 metrics = MetricEvaluator(
                     labels=total_labels.to_list(),
                     predictions=total_scores.to_list(),
@@ -289,7 +293,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best models so far.")
     
-    return best_user_encoder, best_news_encoder
+    return best_user_encoder, best_news_encoder, best_loss
 
 # # Add the ebrec/evaluation directory to sys.path
 # current_dir = os.path.dirname(os.path.abspath(__file__))

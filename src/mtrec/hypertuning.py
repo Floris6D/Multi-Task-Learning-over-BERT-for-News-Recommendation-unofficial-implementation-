@@ -40,8 +40,6 @@ def main():
     user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim)
     news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim)
 
-    
-    
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
     (dataloader_train, dataloader_val) = get_dataloaders(cfg)
 
@@ -51,6 +49,7 @@ def main():
                                        dataloader_train = dataloader_train, 
                                        dataloader_val   = dataloader_val, 
                                        cfg              = cfg["trainer"])
+    return best_validation_loss
     # results = test(news_encoder,
     #                user_encoder, 
     #                dataloader_test)
