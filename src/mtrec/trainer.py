@@ -187,6 +187,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
     #initialize to track best
     #total_loss, total_main_loss, save_num = 0, 0, 0, 0
     best_loss = float('inf')
+    save_num = 0
     while os.path.exists(save_dir+f'/run{save_num}'):
         save_num += 1
     save_path = save_dir+f'/run{save_num}'
