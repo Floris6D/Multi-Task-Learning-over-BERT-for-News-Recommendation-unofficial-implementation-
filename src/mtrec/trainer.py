@@ -12,6 +12,18 @@ from gradient_surgery import PCGrad
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
 
+import time
+def timer(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Function {func.__name__} executed in {execution_time:.2f} seconds")
+        return result
+    return wrapper
+
+
 class TestNet(nn.Module): #TODO: remove this
     def __init__(self, input_dim=2*768, output_dim=1, hidden_dim=128):
         super(TestNet, self).__init__()
@@ -86,16 +98,6 @@ def main_loss(scores, labels, normalization = True):
     pos_scores = torch.sum(scores * labels, axis = 1)
     return -torch.log(torch.exp(pos_scores)/sum_exp).sum() 
 
-
-# def test_main_loss():
-#     labels = torch.tensor([[1, 0], [0, 1], [1, 0]], dtype=torch.float32)
-#     scores = torch.tensor([[1, 0], [0, 1], [1, 0]], dtype=torch.float32)
-#     print("best loss: ", main_loss(scores, labels))
-#     scores = torch.tensor([[0, 1], [1, 0], [0, 1]], dtype=torch.float32)
-#     print("worst loss: ", main_loss(scores, labels))
-#     scores = torch.tensor([[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]], dtype=torch.float32)
-#     print("random loss: ", main_loss(scores, labels))
-
 def category_loss(p1, p2, l1, l2):
     """
     First we untangle all the category predictions and labels
@@ -151,9 +153,6 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
         dataloader_val (torch.utils.data.DataLoader): The dataloader for the validation dataset.
         device (torch.device): The device to be used for training.
     """
-    
-
-    
 
     #initialize optimizer
     params = [

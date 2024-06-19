@@ -33,10 +33,12 @@ def main():
     
 
     bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name'])
+    # Get the embedding dimension
+    embedding_dim = bert.config.hidden_size
     bert = get_peft_model(bert, LoraConfig(cfg["lora_config"]))
     
-    user_encoder = UserEncoder(**cfg['user_encoder'])
-    news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert)
+    user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim)
+    news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim)
 
     
     

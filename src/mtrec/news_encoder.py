@@ -2,15 +2,15 @@ import torch
 from transformers import BertModel
 
 class NewsEncoder(torch.nn.Module):
-    def __init__(self, input_size, embedding_dim, num_classes, num_ner, bert):
+    def __init__(self, embedding_dim, num_ner, bert, cfg_cat, cfg_ner):
         super(NewsEncoder, self).__init__()
-        #TODO: add configuration for the number of layers and hidden size
-        self.cat_net = self.initialize_network(input_size, num_classes)
-        self.ner_net = self.initialize_network(input_size, num_ner)
+        self.cat_net = self.initialize_network(embedding_dim, cfg_cat)
+        self.ner_net = self.initialize_network(embedding_dim, cfg_ner)
         self.num_ner = num_ner
         self.bert = bert
 
-    def initialize_network(self, input_size, output_size, hidden_size=124, num_layers=2, act_fn = torch.nn.ReLU()):
+    def initialize_network(self, input_size, cfg, act_fn = torch.nn.ReLU()):
+        num_layers, hidden_size, output_size = cfg["num_layers"], cfg["hidden_size"], cfg["output_size"]
         if num_layers < 1:
             raise ValueError("Number of layers must be at least 1")
         elif num_layers == 1:
@@ -21,7 +21,6 @@ class NewsEncoder(torch.nn.Module):
             layers.append(act_fn)
             input_size = hidden_size
         layers.append(torch.nn.Linear(hidden_size, output_size))
-        # layers.append(torch.nn.Softmax(dim=1)) #now ouput logits
         return torch.nn.Sequential(*layers)
 
     def forward_cat(self, last_hidden_state):
