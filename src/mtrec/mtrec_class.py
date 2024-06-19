@@ -83,8 +83,8 @@ class Mtrec:
         
         
         # TODO: JE willen we delen door totaal aantal datapunten want dan moet je len(dataloader_train.dataset) doen
-        total_loss /= len(dataloader_val.dataset)
-        total_main_loss /= len(dataloader_val.dataset)
+        total_loss_val /= len(dataloader_val.dataset)
+        total_main_loss_val /= len(dataloader_val.dataset)
         if print_flag: 
             print(f"Validation total Loss: {total_loss_val}")
             print(f"Validation main Loss: {total_main_loss_val}")
@@ -125,8 +125,11 @@ class Mtrec:
         total_labels = torch.cat([total_labels, labels], dim=0)
     
     def save_model(self, path):
-        pass
+        # We need to save the user_encoder and news_encoder
+        torch.save(self.user_encoder.state_dict(), path + "_user_encoder")
+        torch.save(self.news_encoder.state_dict(), path + "_news_encoder")
     
     
     def load_checkpoint(self, path):
-        pass
+        self.user_encoder.load_state_dict(torch.load(path + "_user_encoder"))
+        self.news_encoder.load_state_dict(torch.load(path + "_news_encoder"))
