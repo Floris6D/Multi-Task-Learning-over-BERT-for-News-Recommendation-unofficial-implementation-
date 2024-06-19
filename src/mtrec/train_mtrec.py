@@ -5,6 +5,7 @@ import argparse
 from NeRD_data import EB_NeRDDataset
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer, BertModel
+from mtrec_class import Mtrec
 
 from user_encoder import UserEncoder
 from news_encoder import NewsEncoder
@@ -28,13 +29,12 @@ def main():
     user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim)
     news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim)
 
-    
+    Mtrec_model = Mtrec(cfg, device="cpu")
     
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
     (dataloader_train, dataloader_val) = get_dataloaders(cfg)
 
-    user_encoder, news_encoder, best_validation_loss =       train(user_encoder     = user_encoder, 
-                                       news_encoder     = news_encoder, 
+    user_encoder, news_encoder, best_validation_loss =       train(model     = Mtrec_model, 
                                        dataloader_train = dataloader_train, 
                                        dataloader_val   = dataloader_val, 
                                        cfg              = cfg["trainer"])

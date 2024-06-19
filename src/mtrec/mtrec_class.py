@@ -46,8 +46,8 @@ class Mtrec:
             total_main_loss += main_loss.item()
         
         # TODO: JE willen we delen door totaal aantal datapunten want dan moet je len(dataloader_train.dataset) doen
-        # total_loss /= len(dataloader_train)
-        # total_main_loss /= len(dataloader_train)
+        total_loss /= len(dataloader_train.dataset)
+        total_main_loss /= len(dataloader_train.dataset)
         if print_flag:
             print(f"Training total Loss: {total_loss}")
             print(f"Training main Loss: {total_main_loss}")
@@ -83,8 +83,8 @@ class Mtrec:
         
         
         # TODO: JE willen we delen door totaal aantal datapunten want dan moet je len(dataloader_train.dataset) doen
-        # total_loss /= len(dataloader_train)
-        # total_main_loss /= len(dataloader_train)
+        total_loss /= len(dataloader_val.dataset)
+        total_main_loss /= len(dataloader_val.dataset)
         if print_flag: 
             print(f"Validation total Loss: {total_loss_val}")
             print(f"Validation main Loss: {total_main_loss_val}")
