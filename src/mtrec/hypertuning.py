@@ -39,7 +39,6 @@ def test_config(trial, cfg, bert):
     cfg["trainer"]["lr_news"] = trial.suggest_loguniform("lr_news", lr_min, lr_max)
     cfg["trainer"]["lr_bert"] = trial.suggest_loguniform("lr_bert", lr_min, lr_max)
     
-
     embedding_dim = bert.config.hidden_size
     user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim)
     news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim)
