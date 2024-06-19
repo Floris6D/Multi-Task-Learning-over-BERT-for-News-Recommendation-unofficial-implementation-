@@ -61,9 +61,9 @@ def main():
     # Get the embedding dimension
     bert = get_peft_model(bert, LoraConfig(cfg["lora_config"]))
     
-    test_config = partial(test_config, cfg = cfg, bert = bert)
+    target_func = partial(test_config, cfg = cfg, bert = bert)
     study = optuna.create_study()
-    study.optimize(test_config, n_trials=100)
+    study.optimize(target_func, n_trials=100)
 
     print("best parameters:\n", study.best_params)
 
