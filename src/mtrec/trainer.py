@@ -11,6 +11,27 @@ from gradient_surgery import PCGrad
 # Import the required functions from the metrics package
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
+
+class TestNet(nn.Module):
+    def __init__(self, input_dim=2*768, output_dim=1, hidden_dim=128):
+        super(TestNet, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim))
+
+    def forward(self, user_embedding, candidate_embeddings):
+        # user_embedding: batch_size * embedding_dim
+        # candidate_embeddings: batch_size * N * embedding_dim
+        bs, N, emb_dim = candidate_embeddings.shape
+        candidate_embeddings = candidate_embeddings.reshape(bs*N, emb_dim)
+        x = torch.cat([user_embedding, candidate_embeddings], dim=1)
+        x = self.fc(x)
+        x = x.reshape(bs, N)
+        return x
+
 def cross_product(user_embedding, news_embedding):
     """
     Function to calculate the cross product of the user and news embeddings.
@@ -41,7 +62,7 @@ def print_optimizer_parameters(optimizer):
     for i, param_group in enumerate(optimizer.param_groups):
         print(f"Parameter group {i}:")
         for param in param_group['params']:
-            print(f"Parameter: {param}")
+            print(f"Parameter: {param.shape}")
             print(f"Requires Grad: {param.requires_grad}")
 
 def cosine_sim(user_embedding, news_embedding):
@@ -81,12 +102,6 @@ def main_loss(scores, labels, normalization = True):
 #     print("worst loss: ", main_loss(scores, labels))
 #     scores = torch.tensor([[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]], dtype=torch.float32)
 #     print("random loss: ", main_loss(scores, labels))
-
-
-
-# def category_loss(predicted_probs, labels):
-#     r, c = predicted_probs.shape
-#     return -torch.mean(torch.sum(labels.reshape(r, c) * torch.log(predicted_probs), dim=1))
 
 def category_loss(p1, p2, l1, l2):
     """
@@ -176,7 +191,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             print(f"Epoch {epoch} / {cfg['epochs']}")
             news_encoder.train()
             user_encoder.train()
-            for data in tqdm.tqdm(dataloader_train):
+            for data in dataloader_train:
                 optimizer.zero_grad()
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
@@ -210,7 +225,7 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
             total_loss_val, total_main_loss_val = 0 , 0
             total_scores, total_labels = torch.Tensor([]), torch.Tensor([])
             #df_val_data = dataloader_val.dataset.X
-            for data in tqdm.tqdm(dataloader_val):
+            for data in dataloader_val:
                 print("SKIPPING VALIDATION FOR DEBUGGING")
                 break
                 # Get the data
