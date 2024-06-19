@@ -4,6 +4,7 @@ from transformers import BertTokenizer, BertModel
 from peft import LoraConfig, get_peft_model
 from trainer import get2device, category_loss, NER_loss, cross_product, main_loss
 import torch
+import numpy as np
 
 class Mtrec:
     def __init__(self, cfg, device:str = "cpu"):
@@ -96,7 +97,7 @@ class Mtrec:
         self.user_encoder.eval()
         self.news_encoder.eval()
         
-        total_scores, total_labels = torch.Tensor([]), torch.Tensor([])
+        total_scores, total_labels = np.array([]), np.array([])
         for data in dataloader_test:
             # Get the data
             (user_histories, user_mask, news_tokens, news_mask), (labels, _, _, _, _) = get2device(data, self.device)
@@ -110,19 +111,28 @@ class Mtrec:
             scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
             
             # Now save the scores in lists and remove the padding
+            total_scores = np.concatenate([total_scores, scores], axis=0)
+            
+        # Now save the labels in lists and remove the padding
+        final_score = []
+        for row_idx in total_scores.shape[0]:
+            row_score = total_scores[row_idx, :]
+            # Remove the padding
+            row_score = row_score[row_score != 0]
+            final_score.append(row_score.tolist())
         
         
+        # # Get the original data from the dataloader
+        # df_test_data = dataloader_test.dataset.X
         
-        # Save the scores and labels
-        total_scores = torch.cat([total_scores, scores], dim=0)
-        total_labels = torch.cat([total_labels, labels], dim=0)
+
     
     def save_model(self, path):
         # We need to save the user_encoder and news_encoder
-        torch.save(self.user_encoder.state_dict(), path + "_user_encoder")
-        torch.save(self.news_encoder.state_dict(), path + "_news_encoder")
+        torch.save(self.user_encoder.state_dict(), path + "/user_encoder.pth")
+        torch.save(self.news_encoder.state_dict(), path + "/news_encoder.pth")
     
     
     def load_checkpoint(self, path):
-        self.user_encoder.load_state_dict(torch.load(path + "_user_encoder"))
-        self.news_encoder.load_state_dict(torch.load(path + "_news_encoder"))
+        self.user_encoder.load_state_dict(torch.load(path + "/user_encoder.pth"))
+        self.news_encoder.load_state_dict(torch.load(path + "/news_encoder.pth"))
