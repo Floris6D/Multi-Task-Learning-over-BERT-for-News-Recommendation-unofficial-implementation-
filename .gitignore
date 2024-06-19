@@ -7,6 +7,9 @@ src/mtrec/saved_models
 # Mac/OSX
 .DS_Store
 
+# Saved models
+saved_models/
+
 # Windows
 Thumbs.db
 
