@@ -50,13 +50,6 @@ def cross_product(user_embedding, news_embedding):
     scores = torch.einsum("bk,bik->bi",user_embedding, news_embedding)
     return scores
 
-# def test_cross_product():
-#     u = torch.tensor([[1, 0], [0, 1], [1, 0]], dtype=torch.float32)
-#     n = torch.tensor([[[1, 0], [0, 1]], [[0, 1], [1, 0]], [[1, 0], [0, 1]]], dtype=torch.float32)
-#     print(f"scores 1 :{cross_product(u, n)}")
-#     n = torch.tensor([[[.1,.2], [.3,.4]], [[.5,.6], [.7,.8]], [[.9,.1], [.2,.3]]], dtype=torch.float32)
-#     print(f"scores 2 :{cross_product(u, n)}")
-
 
 def print_optimizer_parameters(optimizer):
     for i, param_group in enumerate(optimizer.param_groups):
