@@ -6,7 +6,6 @@ class NewsEncoder(torch.nn.Module):
         super(NewsEncoder, self).__init__()
         self.cat_net = self.initialize_network(embedding_dim, cfg_cat)
         self.ner_net = self.initialize_network(embedding_dim, cfg_ner)
-        self.num_ner = num_ner
         self.bert = bert
 
     def initialize_network(self, input_size, cfg, act_fn = torch.nn.ReLU()):
@@ -39,7 +38,6 @@ class NewsEncoder(torch.nn.Module):
         tokens = tokens.reshape(bs*n, ts)
         mask = mask.reshape(bs*n, ts)
         x = self.bert(tokens, mask)
-       
         last_hidden_state = x.last_hidden_state
         news_embeddings = last_hidden_state[:, 0 , :].reshape(bs, n, -1)
         if validation:
