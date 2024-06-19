@@ -226,8 +226,6 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg, sco
                 optimizer.step()
                 total_loss += main_loss.item() + cat_loss.item() + ner_loss.item()
                 total_main_loss += main_loss.item()
-                print_optimizer_parameters(optimizer) #TODO removew
-                return user_encoder, news_encoder
             total_loss /= len(dataloader_train)
             total_main_loss /= len(dataloader_train)
             print(f"Training total Loss: {total_loss}")
