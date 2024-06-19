@@ -20,10 +20,10 @@ import copy
 def test_config(trial, cfg, bert):
     cfg = copy.deepcopy(cfg)
     hcf = cfg["hypertuning"]
-    hidden_sizes = [int(x) for x in hcf["hidden_size"]]
-    nl_min, nl_max = int(hcf["num_layers"]["min"]), int(hcf["num_layers"]["max"])
+    hidden_sizes = hcf["hidden_size"]
+    nl_min, nl_max = hcf["num_layers"]["min"],hcf["num_layers"]["max"]
     lr_min, lr_max = hcf["lr"]["min"], hcf["lr"]["max"]
-    batch_sizes = int(hcf["batch_size"])
+    batch_sizes = hcf["batch_size"]
     # Categorical net
     cfg["news_encoder"]["cfg_cat"]["hidden_size"] = trial.suggest_categorical("cat_hidden_size", hidden_sizes)
     cfg["news_encoder"]["cfg_cat"]["num_layers"] = trial.suggest_int("cat_num_layers", nl_min, nl_max)
