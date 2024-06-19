@@ -11,6 +11,7 @@ from news_encoder import NewsEncoder
 from trainer import train
 from peft import LoraConfig, get_peft_model
 
+
 def load_configuration(config):
     file_path = f'src/mtrec/configs/{config}.yml'
     with open(file_path, 'r') as file:
@@ -45,8 +46,7 @@ def main():
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
     (dataloader_train, dataloader_val) = get_dataloaders(cfg)
 
-    user_encoder, news_encoder, 
-    best_validation_loss =       train(user_encoder     = user_encoder, 
+    user_encoder, news_encoder, best_validation_loss =       train(user_encoder     = user_encoder, 
                                        news_encoder     = news_encoder, 
                                        dataloader_train = dataloader_train, 
                                        dataloader_val   = dataloader_val, 
