@@ -124,6 +124,9 @@ class Mtrec:
         total_scores = torch.cat([total_scores, scores], dim=0)
         total_labels = torch.cat([total_labels, labels], dim=0)
     
+    def save_model(self, path):
+        pass
+    
     
     def load_checkpoint(self, path):
         pass
