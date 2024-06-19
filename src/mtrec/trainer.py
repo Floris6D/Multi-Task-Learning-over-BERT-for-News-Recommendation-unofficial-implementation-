@@ -94,7 +94,7 @@ def main_loss(scores, labels, normalization = True):
         scores = scores / sum_exp  # normalize the scores to sum to 1
     sum_exp = torch.sum(torch.exp(scores), dim = 1)
     pos_scores = torch.sum(scores * labels, axis = 1)
-    return -torch.log(torch.exp(pos_scores)/sum_exp).sum() 
+    return -torch.log(torch.exp(pos_scores)/sum_exp).mean() 
 
 def category_loss(p1, p2, l1, l2):
     """
@@ -234,11 +234,14 @@ def train(user_encoder, news_encoder, dataloader_train, dataloader_val, cfg,
                 # break #TODO remove
                 # Get the data
                 (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, device)
-        
+                print("check1")
                 # Get the embeddings
                 inview_news_embeddings, inview_news_cat, inview_news_ner = news_encoder(news_tokens, news_mask)  
+                print("check2")
                 history_news_embeddings, history_news_cat, history_news_ner = news_encoder(user_histories, user_mask) 
+                print("check3")
                 user_embeddings = user_encoder(history_news_embeddings)
+                print("check4")
                 # AUX task: Category prediction            
                 cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
                 # AUX task: NER 
