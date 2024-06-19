@@ -35,9 +35,9 @@ def test_config(trial, cfg, bert):
     #Training
     cfg["trainer"]["batch_size"] = trial.suggest_categorical("batch_size", batch_sizes)
     
-    cfg["trainer"]["lr_user"] = trial.suggest_loguniform("lr_user", lr_min, lr_max)
-    cfg["trainer"]["lr_news"] = trial.suggest_loguniform("lr_news", lr_min, lr_max)
-    cfg["trainer"]["lr_bert"] = trial.suggest_loguniform("lr_bert", lr_min, lr_max)
+    cfg["trainer"]["lr_user"] = trial.suggest_float("lr_user", lr_min, lr_max, log=True)
+    cfg["trainer"]["lr_news"] = trial.suggest_float("lr_news", lr_min, lr_max, log=True)
+    cfg["trainer"]["lr_bert"] = trial.suggest_float("lr_bert", lr_min, lr_max, log=True)
     
     embedding_dim = bert.config.hidden_size
     user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim)
