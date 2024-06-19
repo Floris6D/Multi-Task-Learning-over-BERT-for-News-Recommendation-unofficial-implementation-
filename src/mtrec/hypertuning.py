@@ -20,21 +20,25 @@ import copy
 def test_config(trial, cfg, bert):
     cfg = copy.deepcopy(cfg)
     hcf = cfg["hypertuning"]
+    hidden_sizes = hcf["hidden_size"]
+    nl_min, nl_max = hcf["num_layers"]["min"],hcf["num_layers"]["max"]
+    lr_min, lr_max = hcf["lr"]["min"], hcf["lr"]["max"]
+    batch_sizes = hcf["batch_size"]
     # Categorical net
-    cfg["news_encoder"]["cfg_cat"]["hidden_size"] = trial.suggest_categorical("hidden_size", hcf["hidden_size"])
-    cfg["news_encoder"]["cfg_cat"]["num_layers"] = trial.suggest_int("num_layers", hcf["num_layers"]["min"], hcf["num_layers"]["max"])
+    cfg["news_encoder"]["cfg_cat"]["hidden_size"] = trial.suggest_categorical("cat_hidden_size", hidden_sizes)
+    cfg["news_encoder"]["cfg_cat"]["num_layers"] = trial.suggest_int("cat_num_layers", nl_min, nl_max)
     # NER net
-    cfg["news_encoder"]["cfg_ner"]["num_layers"] = trial.suggest_categorical("hidden_size", hcf["hidden_size"])
-    cfg["news_encoder"]["cfg_ner"]["hidden_size"] = trial.suggest_int("hidden_size", hcf["hidden_size"]["min"], hcf["hidden_size"]["max"])
+    cfg["news_encoder"]["cfg_ner"]["hidden_size"] = trial.suggest_categorical("ner_hidden_size", hidden_sizes)
+    cfg["news_encoder"]["cfg_ner"]["num_layers"] = trial.suggest_int("ner_num_layers", nl_min, nl_max)
     # User encoder
-    cfg["user_encoder"]["hidden_size"] = trial.suggest_categorical("hidden_size", hcf["hidden_size"])
+    cfg["user_encoder"]["hidden_size"] = trial.suggest_categorical("user_hidden_size", hidden_sizes)
     #Training
-    cfg["trainer"]["batch_size"] = trial.suggest_categorical("batch_size", hcf["batch_size"])
-    cfg["trainer"]["lr_user"] = trial.suggest_loguniform("lr", hcf["lr"]["min"], hcf["lr"]["max"])
-    cfg["trainer"]["lr_news"] = trial.suggest_loguniform("lr", hcf["lr"]["min"], hcf["lr"]["max"])
-    cfg["trainer"]["lr_bert"] = trial.suggest_loguniform("lr", hcf["lr"]["min"], hcf["lr"]["max"])
+    cfg["trainer"]["batch_size"] = trial.suggest_categorical("batch_size", batch_sizes)
     
-
+    cfg["trainer"]["lr_user"] = trial.suggest_float("lr_user", lr_min, lr_max, log=True)
+    cfg["trainer"]["lr_news"] = trial.suggest_float("lr_news", lr_min, lr_max, log=True)
+    cfg["trainer"]["lr_bert"] = trial.suggest_float("lr_bert", lr_min, lr_max, log=True)
+    
     embedding_dim = bert.config.hidden_size
     user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim)
     news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim)
@@ -61,9 +65,9 @@ def main():
     # Get the embedding dimension
     bert = get_peft_model(bert, LoraConfig(cfg["lora_config"]))
     
-    test_config = partial(test_config, cfg = cfg, bert = bert)
+    target_func = partial(test_config, cfg = cfg, bert = bert)
     study = optuna.create_study()
-    study.optimize(test_config, n_trials=100)
+    study.optimize(target_func, n_trials=100)
 
     print("best parameters:\n", study.best_params)
 
