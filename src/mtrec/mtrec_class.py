@@ -4,6 +4,7 @@ from transformers import  BertModel
 from peft import LoraConfig, get_peft_model
 from trainer import get2device, category_loss, NER_loss, cross_product, main_loss
 import torch
+import polars as pl
 
 class Mtrec:
     def __init__(self, cfg, device:str = "cpu"):
@@ -96,7 +97,7 @@ class Mtrec:
         self.user_encoder.eval()
         self.news_encoder.eval()
         
-        total_scores, total_labels = [], []
+        total_scores, total_labels, impression_ids = [], [], []
         for data in dataloader_test:
             # Get the data
             (user_histories, user_mask, news_tokens, news_mask), (labels, _, _, _, _), impression_id = get2device(data, self.device)
@@ -108,6 +109,9 @@ class Mtrec:
                 
             # MAIN task: Click prediction
             scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
+            
+            # Save the impression_ids
+            impression_ids.extend(impression_id.tolist())
             
             # Now save the scores and labels in lists and remove the padding
             for row_idx in range(scores.shape[0]):
@@ -122,7 +126,17 @@ class Mtrec:
                 total_scores.append(row_score.tolist())
                 total_labels.append(row_label.tolist())
                 
-        return total_scores, total_labels
+        # Set the results in polars dataframe
+        pred_df = pl.DataFrame(
+            {
+                "impression_id": impression_ids,
+                "scores": total_scores,
+                "labels": total_labels
+            }
+        )
+        
+        
+        return pred_df
         
 
     
