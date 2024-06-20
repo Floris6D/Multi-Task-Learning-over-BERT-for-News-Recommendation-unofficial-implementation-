@@ -12,12 +12,12 @@ user_encoder:
   hidden_size: 128
 
 trainer:
-  optimizer: adam
+  optimizer: adamw
   epochs: 100
   lr_user: 0.001
   lr_news: 0.001
-  lr_bert: 0.001
-  batch_size: 16
+  lr_bert: 0.00001
+  batch_size: 64
 
 dataset:
   data_dir: data_demo
