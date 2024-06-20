@@ -120,10 +120,11 @@ class Mtrec(torch.nn.Module):
                 
                 # Now save the scores and labels in lists and remove the padding
                 for row_idx in range(scores.shape[0]):
-                    row_score = scores[row_idx, :]
-                    row_label = labels[row_idx, :]
-                    # Remove the padding #TODO: JE: Implement this in another way for when no wu sampling is used
-                    row_score = row_score[row_score != 0]
+                    
+                    
+                    row_label_mask = news_mask[row_idx, :, :].sum(dim=1) > 0
+                    row_score = scores[row_idx, row_label_mask]
+                    row_label = labels[row_idx, row_label_mask]
                     
                     # Apply softmax
                     row_score = torch.nn.functional.softmax(row_score, dim=0)
