@@ -108,8 +108,8 @@ class Mtrec(torch.nn.Module):
             with torch.no_grad():
                 # Get the embeddings
                 # news_tokens shape: batch_size * max_inview_articles * max_title length
-                inview_news_embeddings, _, _ = self.news_encoder(news_tokens, news_mask)  
-                history_news_embeddings, _, _ = self.news_encoder(user_histories, user_mask) 
+                inview_news_embeddings, _, _ = self.news_encoder(news_tokens, news_mask, validation=True)  
+                history_news_embeddings, _, _ = self.news_encoder(user_histories, user_mask, validation=True) 
                 user_embeddings = self.user_encoder(history_news_embeddings)
                     
                 # MAIN task: Click prediction

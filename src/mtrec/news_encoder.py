@@ -48,10 +48,55 @@ class NewsEncoder(torch.nn.Module):
 
     
     def forward_ner(self, last_hidden_state, mask):
-        sentence_tokens = last_hidden_state[:, 1:-1, :] #all tokens but SEP and CLS #TODO: check how this works with padding
-        logits =  self.ner_net(sentence_tokens) 
-        output = torch.nn.functional.softmax(logits, dim=2)
+        '''
+        Kijk naar de code die weg gecomment is als je het wilt doen zoals bij forward_cat, ik raakte alleen in de war
+        '''
+        # Last hidden state has dimensions (batch_size, max_inview_articles, max_title_length, hidden_size)
+        sentence_tokens = last_hidden_state[:, :, 1:, :] #all tokens but CLS #TODO: check how this works with padding
+        mask = mask[:, 1:].reshape(sentence_tokens.shape[0], sentence_tokens.shape[1], -1) #all tokens but CLS
+        
+        logits = torch.nan*torch.ones(sentence_tokens.shape[0], sentence_tokens.shape[1], sentence_tokens.shape[2], self.num_ner)
+        
+        for i in range(sentence_tokens.shape[0]): # Loop over batches
+            for j in range(sentence_tokens.shape[1]): # Loop over inview articles
+                if mask[i, j, :].sum() == 0:
+                    continue
+                for k in range(sentence_tokens.shape[2]):
+                    if mask[i, j, k] == 0:
+                        continue
+                    logits[i, j, k, :] = self.ner_net(sentence_tokens[i, j, k, :])
+        
+        ######### Commented code below was without for loops I got confused with the reshaping and masking so for loops
+        
+        output = torch.nn.functional.softmax(logits, dim=3)
         return output
+        
+        # bs, n, n_tokens, _ = sentence_tokens.shape
+        # sentence_tokens = sentence_tokens.reshape(bs*n, n_tokens, -1) # Reshape to (batch_size*max_inview_articles*max_title_length, hidden_size)
+        
+        # # Remove all rows with only zeros in the mask
+        # subset_idx = mask.sum(dim=1) > 0
+        # used_tokens = sentence_tokens[subset_idx]
+        
+        # # Again reshape for every token in the sentence
+        # used_tokens = used_tokens.reshape(used_tokens.shape[0] * used_tokens.shape[1], -1) # Reshape to (batch_size*max_inview_articles*max_title_length, hidden_size)
+        # used_mask = mask[subset_idx]
+        # used_mask = used_mask.reshape(used_mask.shape[0] * used_mask.shape[1])
+        # subset_idx2 = used_mask > 0
+        
+        # final_tokens = used_tokens[subset_idx2]
+        
+        # logits =  self.ner_net(final_tokens) 
+        
+        # # Now reverse the reshaping process
+        # logits_reshape = torch.nan * torch.ones(bs*n, n_tokens, logits.shape[1])
+        # logits_reshape[subset_idx2] = logits
+        
+        # logits_reshape2 = torch.nan * torch.ones(bs, n, n_tokens, logits.shape[1])
+        # logits_reshape2[subset_idx] = logits_reshape
+        
+        # output = torch.nn.functional.softmax(logits_reshape2, dim=3)
+        # return output
 
     
     def forward(self, tokens, mask = False, validation = False):
@@ -75,7 +120,7 @@ class NewsEncoder(torch.nn.Module):
         final_news_embeddings = final_news_embeddings.reshape(bs, n, -1)
         
         if validation:
-            return final_news_embeddings
+            return final_news_embeddings, None, None
         
         # Also restructure the last_hidden_state and use the reversed subset_idx
         final_last_hidden_state = torch.zeros(bs*n, last_hidden_state.shape[1], last_hidden_state.shape[2])
@@ -83,6 +128,6 @@ class NewsEncoder(torch.nn.Module):
         final_last_hidden_state = final_last_hidden_state.reshape(bs, n, ts, -1) # Batch size, max inview articles, max title length, hidden size (BERT)
         
         # Get the category and ner predictions # TODO: JE Check if this deals correctly with padding
-        cat = self.forward_cat(final_last_hidden_state, mask)
-        ner = self.forward_ner(final_last_hidden_state, mask).reshape(bs, n, -1, self.num_ner)        
+        cat = self.forward_cat(final_last_hidden_state, mask) #when there were no articles in the inview articles, the output will be nan
+        ner = self.forward_ner(final_last_hidden_state, mask)      
         return final_news_embeddings, cat, ner
