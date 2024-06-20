@@ -5,7 +5,7 @@
 #SBATCH --job-name=train_mtrec
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=18
-#SBATCH --time=02:00:00
+#SBATCH --time=00:45:00
 #SBATCH --output=./results/slurm_logs/slurm_output_train_mtrec_%A.out
 
 
