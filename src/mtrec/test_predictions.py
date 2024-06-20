@@ -3,16 +3,17 @@ from utils import load_configuration, get_dataloaders
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 import polars as pl
+import torch
 
 cfg = load_configuration('test')
-
-Mtrec_model = Mtrec(cfg, device="cpu")
+device = "cuda" if torch.cuda.is_available() else "cpu"
+Mtrec_model = Mtrec(cfg, device="cpu").to(device)
 (dataloader_train, dataloader_val) = get_dataloaders(cfg)
 
 
 print("Check 1")
 Mtrec_model.load_checkpoint("saved_models/run1")
-predictions = Mtrec_model.predict(dataloader_train)
+predictions = Mtrec_model.predict(dataloader_val)
 
 metrics = MetricEvaluator(
     labels=predictions["labels"].to_list(),

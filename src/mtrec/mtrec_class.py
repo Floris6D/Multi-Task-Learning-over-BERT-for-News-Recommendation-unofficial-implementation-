@@ -6,8 +6,9 @@ from trainer import get2device, category_loss, NER_loss, cross_product, main_los
 import torch
 import polars as pl
 
-class Mtrec:
+class Mtrec(torch.nn.Module):
     def __init__(self, cfg, device:str = "cpu"):
+        super().__init__()
         bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name'])
         # Get the embedding dimension
         embedding_dim = bert.config.hidden_size
