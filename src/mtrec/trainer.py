@@ -89,6 +89,7 @@ def get2device(data, device):
     return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device))
 
 def main_loss(scores, labels, normalization = True):
+    assert scores.requires_grad, "Scores should require grad"
     if normalization: # normalization? TODO
         scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
         scores = torch.exp(scores)  # apply exponential function
@@ -120,21 +121,25 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     First we untangle all the NER predictions and labels
     Then apply cross entropy loss
     """
-    
+    # Get shapes
     bs, N1, tl1, num_ner = p1.shape
-    bs, N2, tl2, num_ner = p2.shape   
+    bs, N2, tl2, num_ner = p2.shape
+    # Reshape predictions
     p1 = p1.reshape(bs*N1*tl1, num_ner)
     p2 = p2.reshape(bs*N2*tl2, num_ner)
-    l1 = l1[:,:,:tl1].reshape(bs*N1*tl1)
-    l2 = l2[:,:,:tl2].reshape(bs*N2*tl2)
-       
-    mask1 = mask1[:,:,:tl1].reshape(bs*N1*tl1)
-    mask2 = mask2[:,:,:tl2].reshape(bs*N2*tl2)
-    mask = torch.cat([mask1, mask2], dim = 0)
     predictions = torch.cat([p1, p2], dim = 0)
-    predictions = predictions[mask.bool()]
+    # Reshape mask
+    mask1   = mask1[:,:,:tl1].reshape(bs*N1*tl1)
+    mask2   = mask2[:,:,:tl2].reshape(bs*N2*tl2)
+    mask = torch.cat([mask1, mask2], dim = 0)
+    # Reshape labels
+    l1      = l1[:,:,:tl1].reshape(bs*N1*tl1)
+    l2      = l2[:,:,:tl2].reshape(bs*N2*tl2)
     labels = torch.cat([l1, l2], dim = 0).long()
+    # Apply mask
     labels = torch.masked_select(labels, mask.bool())
+    predictions = predictions[mask.bool()]
+    # Calculate loss
     return nn.CrossEntropyLoss()(predictions, labels)
 
 def plot_loss(loss_train, loss_val, title:str = "Loss", save_dir:str = "default_savedir", xlabel:str = "Epoch", ylabel:str = "Loss"):
@@ -210,10 +215,21 @@ def train(model, dataloader_train, dataloader_val, cfg,
     #initialize to track best
     best_loss = float('inf')
     save_num = 0
-    while os.path.exists(save_dir+f'/run{save_num}'):
+    # Ensure the save directory ends with a slash
+    if not save_dir.endswith('/'):
+        save_dir += '/'
+
+    # Determine a unique save directory
+    while os.path.exists(os.path.join(save_dir, f'run{save_num}')):
         save_num += 1
-    save_path = save_dir+f'/run{save_num}'
-    os.makedirs(save_path)
+
+    save_path = os.path.join(save_dir, f'run{save_num}')
+    os.makedirs(save_path, exist_ok=True)
+
+    # Debugging: Confirm directory creation
+    if not os.path.exists(save_path):
+        raise RuntimeError(f"Failed to create directory: {save_path}")
+    
     training_losses, validation_losses = [], []
     if print_flag: print(f"Saving models to {save_path}")
     try: #training can be interrupted by catching KeyboardInterrupt
@@ -229,13 +245,15 @@ def train(model, dataloader_train, dataloader_val, cfg,
             total_loss_val, total_main_loss_val = model.validate(dataloader_val, print_flag)
             validation_losses.append(total_main_loss_val)
             #saving best models
-            if total_loss_val < best_loss: #TODO: best loss is set to 0, should be set to infinity  
+            if total_loss_val < best_loss:   
                 best_loss = total_loss_val
                 if print_flag:
                     print(f"total loss val: {total_loss_val}")
                     print(f"best loss: {best_loss}")              
                     print(f"Saving model @{epoch}")
-                model.save_model(f"{save_path}/model_{epoch}.pt")
+                model_save_path = os.path.join(save_path, f"model_{epoch + 1}.pt")
+                print(f"Saving model to {model_save_path}")  # Debugging: Print save path TODO remove
+                model.save_model(model_save_path)
                 best_model = copy.deepcopy(model)
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best model so far.")
