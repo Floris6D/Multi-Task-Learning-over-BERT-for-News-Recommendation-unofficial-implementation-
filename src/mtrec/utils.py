@@ -2,6 +2,7 @@ from transformers import BertTokenizer
 import yaml
 from NeRD_data import EB_NeRDDataset
 from torch.utils.data import DataLoader
+import time
 
 def load_configuration(config_file):
     file_path = f'src/mtrec/configs/{config_file}.yml'
@@ -23,3 +24,14 @@ def get_dataloaders(cfg):
                     batch_size=cfg["trainer"]["batch_size"], shuffle=True, num_workers=16, drop_last=True) 
                     for split in ['train', 'validation'] #TODO: add test, need to download
                     )	
+
+
+def timer(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Function {func.__name__} executed in {execution_time:.2f} seconds")
+        return result
+    return wrapper
