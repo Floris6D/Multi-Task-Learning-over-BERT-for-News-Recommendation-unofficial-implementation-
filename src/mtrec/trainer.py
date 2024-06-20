@@ -251,9 +251,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
                     print(f"total loss val: {total_loss_val}")
                     print(f"best loss: {best_loss}")              
                     print(f"Saving model @{epoch}")
-                model_save_path = os.path.join(save_path, f"model_{epoch + 1}.pt")
-                print(f"Saving model to {model_save_path}")  # Debugging: Print save path TODO remove
-                model.save_model(model_save_path)
+                model.save_model(save_path)
                 best_model = copy.deepcopy(model)
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best model so far.")
