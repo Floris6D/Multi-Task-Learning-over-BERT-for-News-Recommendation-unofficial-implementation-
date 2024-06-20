@@ -57,6 +57,8 @@ def cross_product(user_embedding, news_embedding):
     bsn, N, emb_dimn = news_embedding.shape
     assert bsu == bsn , "Batch sizes of user and news embeddings do not match"
     assert emb_dimu == emb_dimn, "Embedding dimensions of user and news embeddings do not match"
+    assert user_embedding.requires_grad, "User embedding requires grad"
+    assert news_embedding.requires_grad, "News embedding requires grad"
     scores = torch.einsum("bk,bik->bi",user_embedding, news_embedding)
     return scores
 
