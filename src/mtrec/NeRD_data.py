@@ -51,7 +51,7 @@ class EB_NeRDDataset(Dataset):
         self.generate_ner_tag()
         
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
-        (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), self.y = self.transform()
+        (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), self.y, self.id = self.transform()
         
     def __len__(self):
         return int(len(self.y))
@@ -66,7 +66,8 @@ class EB_NeRDDataset(Dataset):
         """
         x = (self.his_input_title[idx], self.mask_his_input_title[idx], self.pred_input_title[idx], self.mask_pred_input_title[idx])
         y = (self.y[idx], self.c_y_his[idx], self.c_y_inview[idx], self.ner_y_his[idx], self.ner_y_inview[idx])
-        return x, y
+        impression_id = self.id[idx]
+        return x, y, impression_id
 
     
     def load_behaviors(self, COLUMNS):
@@ -209,8 +210,11 @@ class EB_NeRDDataset(Dataset):
             his_input_title = np.squeeze(his_input_title, axis=2)
             mask_his_input_title = np.squeeze(mask_his_input_title, axis=2)
             
+            # Also return the impression_id
+            impression_ids = self.data['impression_id'].to_list()
+            
                         
-            return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), (self.y)
+            return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), (self.y), impression_ids
     
     def create_category_labels(self):       
 
