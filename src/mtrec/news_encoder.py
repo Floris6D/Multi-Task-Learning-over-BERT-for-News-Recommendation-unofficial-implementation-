@@ -39,14 +39,34 @@ class NewsEncoder(torch.nn.Module):
 
     
     def forward(self, tokens, mask = False, validation = False):
-        bs, n, ts = tokens.shape
+        # Reshape the tokens and mask
+        bs, n, ts = tokens.shape # batch size, max inview articles, max_title length
         tokens = tokens.reshape(bs*n, ts)
         mask = mask.reshape(bs*n, ts)
+        
+        # Next remove all rows with only zeros in the mask
+        subset_idx = mask.sum(dim=1) > 0
+        tokens = tokens[subset_idx]
+        mask = mask[subset_idx]
+        
         x = self.bert(tokens, mask)
         last_hidden_state = x.last_hidden_state
-        news_embeddings = last_hidden_state[:, 0 , :].reshape(bs, n, -1)
+        news_embeddings = last_hidden_state[:, 0 , :] #CLS token at index 0
+        
+        # Restructure the news embeddings in the original shape and using the reversed subset_idx if subset_idx was false, news embeddings will be zero
+        final_news_embeddings = torch.zeros(bs*n, news_embeddings.shape[1])
+        final_news_embeddings[subset_idx] = news_embeddings
+        final_news_embeddings = final_news_embeddings.reshape(bs, n, -1)
+        
         if validation:
-            return news_embeddings
-        cat = self.forward_cat(last_hidden_state).reshape(bs, n, -1)
-        ner = self.forward_ner(last_hidden_state).reshape(bs, n, -1, self.num_ner)        
-        return news_embeddings, cat, ner
+            return final_news_embeddings
+        
+        # Also restructure the last_hidden_state and use the reversed subset_idx
+        final_last_hidden_state = torch.zeros(bs*n, last_hidden_state.shape[1], last_hidden_state.shape[2])
+        final_last_hidden_state[subset_idx] = last_hidden_state
+        final_last_hidden_state = final_last_hidden_state.reshape(bs, n, ts, -1) 
+        
+        # Get the category and ner predictions # TODO: JE Check if this deals correctly with padding
+        cat = self.forward_cat(final_last_hidden_state).reshape(bs, n, -1)
+        ner = self.forward_ner(final_last_hidden_state).reshape(bs, n, -1, self.num_ner)        
+        return final_news_embeddings, cat, ner
