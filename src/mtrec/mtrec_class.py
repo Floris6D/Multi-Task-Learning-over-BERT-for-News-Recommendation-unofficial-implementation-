@@ -104,6 +104,7 @@ class Mtrec(torch.nn.Module):
             (user_histories, user_mask, news_tokens, news_mask), (labels, _, _, _, _), impression_id = get2device(data, self.device)
 
             # Get the embeddings
+            # news_tokens shape: batch_size * max_inview_articles * max_title length
             inview_news_embeddings, _, _ = self.news_encoder(news_tokens, news_mask)  
             history_news_embeddings, _, _ = self.news_encoder(user_histories, user_mask) 
             user_embeddings = self.user_encoder(history_news_embeddings)

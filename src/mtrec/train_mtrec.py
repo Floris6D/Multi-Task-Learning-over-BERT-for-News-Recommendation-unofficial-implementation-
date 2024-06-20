@@ -11,7 +11,7 @@ def main():
     args = parser.parse_args()
     cfg = load_configuration(args.file)
     device =  "cuda" if torch.cuda.is_available() else "cpu"
-    Mtrec_model = Mtrec(cfg, device=device)
+    Mtrec_model = Mtrec(cfg, device=device).to(device)
     
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
     (dataloader_train, dataloader_val) = get_dataloaders(cfg)
