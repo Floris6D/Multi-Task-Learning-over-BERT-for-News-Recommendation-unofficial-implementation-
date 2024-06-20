@@ -83,6 +83,6 @@ class NewsEncoder(torch.nn.Module):
         final_last_hidden_state = final_last_hidden_state.reshape(bs, n, ts, -1) # Batch size, max inview articles, max title length, hidden size (BERT)
         
         # Get the category and ner predictions # TODO: JE Check if this deals correctly with padding
-        cat = self.forward_cat(final_last_hidden_state, mask).reshape(bs, n, -1)
+        cat = self.forward_cat(final_last_hidden_state, mask)
         ner = self.forward_ner(final_last_hidden_state, mask).reshape(bs, n, -1, self.num_ner)        
         return final_news_embeddings, cat, ner
