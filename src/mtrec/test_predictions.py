@@ -32,5 +32,5 @@ predictions = predictions.with_columns(
 write_submission_file(
     impression_ids=predictions['impression_id'],
     prediction_scores=predictions["ranked_scores"],
-    path="downloads/predictions.txt",
+    path="saved_models/run1/predictions.txt",
 )
