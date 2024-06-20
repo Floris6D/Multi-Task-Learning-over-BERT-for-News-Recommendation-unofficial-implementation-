@@ -5,21 +5,13 @@ import copy
 import matplotlib.pyplot as plt
 import numpy as np
 from gradient_surgery import PCGrad
+from utils import timer
 
 # Import the required functions from the metrics package
 #from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 
 
-import time
-def timer(func):
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        execution_time = end_time - start_time
-        print(f"Function {func.__name__} executed in {execution_time:.2f} seconds")
-        return result
-    return wrapper
+
 
 
 class TestNet(nn.Module): #TODO: remove this
@@ -42,6 +34,7 @@ class TestNet(nn.Module): #TODO: remove this
         x = x.reshape(bs, N)
         return x
 
+@timer
 def cross_product(user_embedding, news_embedding):
     """
     Function to calculate the cross product of the user and news embeddings.
@@ -84,10 +77,12 @@ def cosine_sim(user_embedding, news_embedding):
     scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2)
     return scores
 
+@timer
 def get2device(data, device):
     (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview), impression_id = data
     return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device)), impression_id.to(device)
 
+@timer
 def main_loss(scores, labels, normalization = True):
     assert scores.requires_grad, "Scores should require grad"
     if normalization: # normalization? TODO
@@ -99,6 +94,7 @@ def main_loss(scores, labels, normalization = True):
     pos_scores = torch.sum(scores * labels, axis = 1)
     return -torch.log(torch.exp(pos_scores)/sum_exp).mean() 
 
+@timer
 def category_loss(p1, p2, l1, l2):
     """
     First we untangle all the category predictions and labels
@@ -115,7 +111,7 @@ def category_loss(p1, p2, l1, l2):
     predictions = torch.cat([p1, p2], dim = 0)
     labels = torch.cat([l1, l2], dim = 0)
     return nn.CrossEntropyLoss()(predictions, labels)
-
+@timer
 def NER_loss(p1, p2, l1, l2, mask1, mask2): 
     """
     First we untangle all the NER predictions and labels
@@ -142,6 +138,7 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     # Calculate loss
     return nn.CrossEntropyLoss()(predictions, labels)
 
+@timer
 def plot_loss(loss_train, loss_val, title:str = "Loss", save_dir:str = "default_savedir", xlabel:str = "Epoch", ylabel:str = "Loss"):
     X = np.arange(1, len(loss_train)+1)
     plt.plot(X, loss_train, label = "Training Loss")

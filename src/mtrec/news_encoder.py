@@ -1,5 +1,6 @@
 import torch
 from transformers import BertModel
+from utils import timer
 
 class NewsEncoder(torch.nn.Module):
     def __init__(self, embedding_dim, bert, cfg_cat, cfg_ner):
@@ -23,17 +24,20 @@ class NewsEncoder(torch.nn.Module):
         layers.append(torch.nn.Linear(hidden_size, output_size))
         return torch.nn.Sequential(*layers)
 
+    @timer
     def forward_cat(self, last_hidden_state):
         cls_tokens = last_hidden_state[:, 0, :]
         logits = self.cat_net(cls_tokens)
         return torch.nn.functional.softmax(logits, dim=1)
 
+    @timer
     def forward_ner(self, last_hidden_state):
         sentence_tokens = last_hidden_state[:, 1:-1, :] #all tokens but SEP and CLS #TODO: check how this works with padding
         logits =  self.ner_net(sentence_tokens) 
         output = torch.nn.functional.softmax(logits, dim=2)
         return output
 
+    @timer
     def forward(self, tokens, mask = False, validation = False):
         bs, n, ts = tokens.shape
         tokens = tokens.reshape(bs*n, ts)
@@ -45,6 +49,4 @@ class NewsEncoder(torch.nn.Module):
             return news_embeddings
         cat = self.forward_cat(last_hidden_state).reshape(bs, n, -1)
         ner = self.forward_ner(last_hidden_state).reshape(bs, n, -1, self.num_ner)        
-          
-        
         return news_embeddings, cat, ner
