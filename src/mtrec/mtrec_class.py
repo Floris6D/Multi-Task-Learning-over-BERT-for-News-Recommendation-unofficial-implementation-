@@ -26,7 +26,7 @@ class Mtrec:
         for data in dataloader_train:
             optimizer.zero_grad()
             # Get the data
-            (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, self.device)
+            (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview), _ = get2device(data, self.device)
             # Get the embeddings
             inview_news_embeddings, inview_news_cat, inview_news_ner = self.news_encoder(news_tokens, news_mask)  
             history_news_embeddings, history_news_cat, history_news_ner = self.news_encoder(user_histories, user_mask) 
@@ -63,7 +63,7 @@ class Mtrec:
         #df_val_data = dataloader_val.dataset.X
         for data in dataloader_val:
             # Get the data
-            (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview) = get2device(data, self.device)
+            (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview), _ = get2device(data, self.device)
             
             # Get the embeddings
             inview_news_embeddings, inview_news_cat, inview_news_ner = self.news_encoder(news_tokens, news_mask)  
@@ -99,7 +99,7 @@ class Mtrec:
         total_scores, total_labels = [], []
         for data in dataloader_test:
             # Get the data
-            (user_histories, user_mask, news_tokens, news_mask), (labels, _, _, _, _) = get2device(data, self.device)
+            (user_histories, user_mask, news_tokens, news_mask), (labels, _, _, _, _), impression_id = get2device(data, self.device)
 
             # Get the embeddings
             inview_news_embeddings, _, _ = self.news_encoder(news_tokens, news_mask)  
