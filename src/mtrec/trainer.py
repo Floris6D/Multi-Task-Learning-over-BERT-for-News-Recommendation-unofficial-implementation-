@@ -163,15 +163,26 @@ def train(model, dataloader_train, dataloader_val, cfg,
         {"params": news_encoder.bert.parameters(), "lr": cfg["lr_bert"]}  # Parameters of BERT
     ] 
 
-    # #TODO: remove this
-    # test_net = TestNet()
-    # params += list(test_net.parameters())
+
+    # Perhaps learning rate decay for bert
+    # optimizer_grouped_parameters = [
+    #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'layer.11' in name or 'layer.10' in name], 'lr': 5e-5},
+    #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'layer.9' in name or 'layer.8' in name], 'lr': 3e-5},
+    #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'layer.7' in name or 'layer.6' in name], 'lr': 2e-5},
+    #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'layer.5' in name or 'layer.4' in name], 'lr': 1e-5},
+    #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'layer.3' in name or 'layer.2' in name], 'lr': 1e-5},
+    #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'layer.1' in name or 'layer.0' in name], 'lr': 1e-5},
+    #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'embeddings' in name], 'lr': 1e-5},
+    #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'classifier' in name], 'lr': 5e-5},
+    # ]
 
 
     if cfg["optimizer"] == "adam":
         optimizer = torch.optim.Adam(params)
     elif cfg["optimizer"] == "sgd":
         optimizer = torch.optim.SGD(params)
+    elif cfg["optimizer"] == "adamw":
+        optimizer = torch.optim.AdamW(params)
     else:
         print("Invalid optimizer <{}>.".format(cfg["optimizer"]))
         return
