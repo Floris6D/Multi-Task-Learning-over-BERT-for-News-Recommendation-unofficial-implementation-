@@ -20,9 +20,6 @@ def main():
                                        dataloader_train = dataloader_train, 
                                        dataloader_val   = dataloader_val, 
                                        cfg              = cfg["trainer"])
-    # results = test(news_encoder,
-    #                user_encoder, 
-    #                dataloader_test)
     
     #TODO: JE: Make submission file
 

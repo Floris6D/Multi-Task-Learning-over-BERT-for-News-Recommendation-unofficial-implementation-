@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import os
 import copy
-
-
+import matplotlib.pyplot as plt
+import numpy as np
 from gradient_surgery import PCGrad
 
 # Import the required functions from the metrics package
@@ -133,12 +133,22 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     predictions = predictions[mask.bool()]
     labels = torch.cat([l1, l2], dim = 0).long()
     labels = torch.masked_select(labels, mask.bool())
+    return nn.CrossEntropyLoss()(predictions, labels)
 
-    return nn.CrossEntropyLoss()(predictions, labels) 
+def plot_loss(loss_train, loss_val, title:str = "Loss", save_dir:str = "default_savedir", xlabel:str = "Epoch", ylabel:str = "Loss"):
+    X = np.arange(1, len(loss_train)+1)
+    plt.plot(X, loss_train, label = "Training Loss")
+    X = np.arange(1, len(loss_val)+1)
+    plt.plot(X, loss_val, label = "Validation Loss")
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f"{save_dir}/{title}.png") 
     
 def train(model, dataloader_train, dataloader_val, cfg, 
-          print_flag = True,
-          scoring_function:callable = cross_product, criterion:callable = main_loss,  device:str = "cpu", save_dir:str = "saved_models"):
+          print_flag = True, save_dir:str = "saved_models"):
     """
     Function to train the model on the given dataset.
     
@@ -188,7 +198,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
         return
 
 
-    #TURNEMALLON TODO: remove this
+    #TURNEMALLON TODO: remove this?
     for param_group in optimizer.param_groups:
         for param in param_group['params']:
             param.requires_grad=True
@@ -196,13 +206,13 @@ def train(model, dataloader_train, dataloader_val, cfg,
     #optimizer = PCGrad(optimizer) #TODO: PCGrad
     
     #initialize to track best
-    #total_loss, total_main_loss, save_num = 0, 0, 0, 0
     best_loss = float('inf')
     save_num = 0
     while os.path.exists(save_dir+f'/run{save_num}'):
         save_num += 1
     save_path = save_dir+f'/run{save_num}'
     os.makedirs(save_path)
+    training_losses, validation_losses = [], []
     if print_flag: print(f"Saving models to {save_path}")
     try: #training can be interrupted by catching KeyboardInterrupt
         #training
@@ -211,26 +221,23 @@ def train(model, dataloader_train, dataloader_val, cfg,
             
             # Training
             total_loss, total_main_loss = model.train(dataloader_train, optimizer, print_flag)
+            training_losses.append(total_main_loss)
 
             #validation
             total_loss_val, total_main_loss_val = model.validate(dataloader_val, print_flag)
-            
+            validation_losses.append(total_main_loss_val)
             #saving best models
             if total_loss_val < best_loss: #TODO: best loss is set to 0, should be set to infinity  
                 best_loss = total_loss_val
                 if print_flag:
                     print(f"total loss val: {total_loss_val}")
                     print(f"best loss: {best_loss}")              
-                    print("Saving model @{epoch}")
-                    print(f"total loss val: {total_loss_val}")
-                    print(f"best loss: {best_loss}")
-                model.save_model(save_path)
+                    print(f"Saving model @{epoch}")
+                model.save_model(f"{save_path}/model_{epoch}.pt")
                 best_model = copy.deepcopy(model)
-                
-
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best model so far.")
-    
+    plot_loss(training_losses, validation_losses, save_dir = save_path)
     return best_model, best_loss
 
 # # Calculate the metrics #TODO look at dimensions of scores and labels

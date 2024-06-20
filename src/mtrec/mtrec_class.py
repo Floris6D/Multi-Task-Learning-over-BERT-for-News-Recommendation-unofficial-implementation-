@@ -1,10 +1,9 @@
 from user_encoder import UserEncoder
 from news_encoder import NewsEncoder
-from transformers import BertTokenizer, BertModel
+from transformers import  BertModel
 from peft import LoraConfig, get_peft_model
 from trainer import get2device, category_loss, NER_loss, cross_product, main_loss
 import torch
-import numpy as np
 
 class Mtrec:
     def __init__(self, cfg, device:str = "cpu"):
