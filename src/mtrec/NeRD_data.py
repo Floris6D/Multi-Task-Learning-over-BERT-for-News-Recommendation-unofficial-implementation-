@@ -34,7 +34,7 @@ class EB_NeRDDataset(Dataset):
         self.split = split
         self.wu_sampling = wu_sampling
         self.eval_mode = False if split == 'train' else True
-        self.eval_mode = False # Temporarily set to False for always wu sampling
+        #self.eval_mode = False # Temporarily set to False for always wu sampling
         # Contains path (see config.yaml) to the json file
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -366,7 +366,7 @@ def convert_text2encoding_with_transformers_tokenizers(
     padding = "max_length" if max_length else False
     encoded_tokens = tokenizer(
         text,
-        add_special_tokens=False,
+        add_special_tokens=True, ### Now the tokenizer will add the special tokens
         padding=padding,
         max_length=max_length,
         truncation=True,
