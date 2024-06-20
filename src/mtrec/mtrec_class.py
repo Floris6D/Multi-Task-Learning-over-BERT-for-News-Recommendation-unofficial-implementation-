@@ -67,21 +67,23 @@ class Mtrec(torch.nn.Module):
             # Get the data
             (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview), _ = get2device(data, self.device)
             
-            # Get the embeddings
-            inview_news_embeddings, inview_news_cat, inview_news_ner = self.news_encoder(news_tokens, news_mask)  
-            history_news_embeddings, history_news_cat, history_news_ner = self.news_encoder(user_histories, user_mask) 
-            user_embeddings = self.user_encoder(history_news_embeddings)
+            # No gradient calculation needed
+            with torch.no_grad():
+                # Get the embeddings
+                inview_news_embeddings, inview_news_cat, inview_news_ner = self.news_encoder(news_tokens, news_mask)  
+                history_news_embeddings, history_news_cat, history_news_ner = self.news_encoder(user_histories, user_mask) 
+                user_embeddings = self.user_encoder(history_news_embeddings)
 
-            # AUX task: Category prediction            
-            cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
-            # AUX task: NER 
-            ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, news_mask, user_mask)                    
-            # MAIN task: Click prediction
-            scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
-            main_loss = criterion(scores, labels)
-            # Metrics
-            total_loss_val += main_loss.item() + cat_loss.item() + ner_loss.item()
-            total_main_loss_val += main_loss.item()
+                # AUX task: Category prediction            
+                cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
+                # AUX task: NER 
+                ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, news_mask, user_mask)                    
+                # MAIN task: Click prediction
+                scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
+                main_loss = criterion(scores, labels)
+                # Metrics
+                total_loss_val += main_loss.item() + cat_loss.item() + ner_loss.item()
+                total_main_loss_val += main_loss.item()
         
         
         # TODO: JE willen we delen door totaal aantal datapunten want dan moet je len(dataloader_train.dataset) doen
@@ -103,30 +105,31 @@ class Mtrec(torch.nn.Module):
             # Get the data
             (user_histories, user_mask, news_tokens, news_mask), (labels, _, _, _, _), impression_id = get2device(data, self.device)
 
-            # Get the embeddings
-            # news_tokens shape: batch_size * max_inview_articles * max_title length
-            inview_news_embeddings, _, _ = self.news_encoder(news_tokens, news_mask)  
-            history_news_embeddings, _, _ = self.news_encoder(user_histories, user_mask) 
-            user_embeddings = self.user_encoder(history_news_embeddings)
+            with torch.no_grad():
+                # Get the embeddings
+                # news_tokens shape: batch_size * max_inview_articles * max_title length
+                inview_news_embeddings, _, _ = self.news_encoder(news_tokens, news_mask)  
+                history_news_embeddings, _, _ = self.news_encoder(user_histories, user_mask) 
+                user_embeddings = self.user_encoder(history_news_embeddings)
+                    
+                # MAIN task: Click prediction
+                scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
                 
-            # MAIN task: Click prediction
-            scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
-            
-            # Save the impression_ids
-            impression_ids.extend(impression_id.tolist())
-            
-            # Now save the scores and labels in lists and remove the padding
-            for row_idx in range(scores.shape[0]):
-                row_score = scores[row_idx, :]
-                row_label = labels[row_idx, :]
-                # Remove the padding #TODO: JE: Implement this in another way for when no wu sampling is used
-                row_score = row_score[row_score != 0]
+                # Save the impression_ids
+                impression_ids.extend(impression_id.tolist())
                 
-                # Apply softmax
-                row_score = torch.nn.functional.softmax(row_score, dim=0)
+                # Now save the scores and labels in lists and remove the padding
+                for row_idx in range(scores.shape[0]):
+                    row_score = scores[row_idx, :]
+                    row_label = labels[row_idx, :]
+                    # Remove the padding #TODO: JE: Implement this in another way for when no wu sampling is used
+                    row_score = row_score[row_score != 0]
+                    
+                    # Apply softmax
+                    row_score = torch.nn.functional.softmax(row_score, dim=0)
 
-                total_scores.append(row_score.tolist())
-                total_labels.append(row_label.tolist())
+                    total_scores.append(row_score.tolist())
+                    total_labels.append(row_label.tolist())
                 
         # Set the results in polars dataframe
         pred_df = pl.DataFrame(
