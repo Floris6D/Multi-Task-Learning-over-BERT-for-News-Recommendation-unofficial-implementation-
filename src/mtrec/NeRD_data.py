@@ -34,7 +34,7 @@ class EB_NeRDDataset(Dataset):
         self.split = split
         self.wu_sampling = wu_sampling
         self.eval_mode = False if split == 'train' else True
-        self.eval_mode = False # Temporarily set to False for always wu sampling
+        #self.eval_mode = False # Temporarily set to False for always wu sampling
         # Contains path (see config.yaml) to the json file
         for k, v in kwargs.items():
             setattr(self, k, v)
