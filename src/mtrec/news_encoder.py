@@ -53,7 +53,12 @@ class NewsEncoder(torch.nn.Module):
         '''
         # Last hidden state has dimensions (batch_size, max_inview_articles, max_title_length, hidden_size)
         sentence_tokens = last_hidden_state[:, :, 1:, :] #all tokens but CLS #TODO: check how this works with padding
-        mask = mask[:, 1:].reshape(sentence_tokens.shape[0], sentence_tokens.shape[1], -1) #all tokens but CLS
+        #mask = mask[:, 1:].reshape(sentence_tokens.shape[0], sentence_tokens.shape[1], -1) #all tokens but CLS
+        mask_ner = mask.clone()
+        mask_ner[:, 0] = 0 #CLS token is not used for NER
+        last_idx = torch.argmax(torch.fliplr(mask_ner), dim=1)
+        cols = mask_ner.shape[1] - 1 - last_idx
+        mask_ner[torch.arange(mask_ner.shape[0]), cols] = 0 # Set the last token to 0, now cls and sep tokens are 0
         
         logits = torch.nan*torch.ones(sentence_tokens.shape[0], sentence_tokens.shape[1], sentence_tokens.shape[2], self.num_ner)
         

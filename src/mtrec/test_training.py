@@ -16,8 +16,10 @@ print("Check 1")
 #initialize optimizer
 user_encoder = Mtrec_model.user_encoder
 news_encoder = Mtrec_model.news_encoder
+
+cfg = cfg["trainer"]
 params = [
-    {"params": [user_encoder.W,  user_encoder.q],   "lr": cfg["lr_user"]},  # lr of attention layer in user encoder
+    {"params": [user_encoder.W,  user_encoder.q],   "lr": cfg},  # lr of attention layer in user encoder
     {"params": list(news_encoder.cat_net.parameters()) + list(news_encoder.ner_net.parameters()),
                 "lr": cfg["lr_news"]},  # lr of auxiliary tasks
     {"params": news_encoder.bert.parameters(), "lr": cfg["lr_bert"]}  # Parameters of BERT
