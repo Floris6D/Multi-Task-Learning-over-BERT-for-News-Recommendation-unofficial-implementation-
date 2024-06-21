@@ -30,15 +30,15 @@ class Mtrec(torch.nn.Module):
             # Get the data
             (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview), _ = get2device(data, self.device)
             # Get the embeddings
-            inview_news_embeddings, inview_news_cat, inview_news_ner = self.news_encoder(news_tokens, news_mask)  
-            history_news_embeddings, history_news_cat, history_news_ner = self.news_encoder(user_histories, user_mask) 
+            inview_news_embeddings, inview_news_cat, inview_news_ner, inview_mask_ner = self.news_encoder(news_tokens, news_mask)  
+            history_news_embeddings, history_news_cat, history_news_ner, history_mask_ner = self.news_encoder(user_histories, user_mask) 
             user_embeddings = self.user_encoder(history_news_embeddings)
             
             # AUX task: Category prediction            
             cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
             
             # AUX task: NER 
-            ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, news_mask, user_mask)
+            ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, inview_mask_ner, history_mask_ner)
             
             # MAIN task: Click prediction
             scores = scoring_function(user_embeddings, inview_news_embeddings)

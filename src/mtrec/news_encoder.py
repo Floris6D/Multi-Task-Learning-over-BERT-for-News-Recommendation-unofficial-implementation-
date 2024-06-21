@@ -52,7 +52,7 @@ class NewsEncoder(torch.nn.Module):
         Kijk naar de code die weg gecomment is als je het wilt doen zoals bij forward_cat, ik raakte alleen in de war
         '''
         # Last hidden state has dimensions (batch_size, max_inview_articles, max_title_length, hidden_size)
-        sentence_tokens = last_hidden_state[:, :, 1:, :] #all tokens but CLS #TODO: check how this works with padding
+        sentence_tokens = last_hidden_state[:, :, :, :]
         #mask = mask[:, 1:].reshape(sentence_tokens.shape[0], sentence_tokens.shape[1], -1) #all tokens but CLS
         mask_ner = mask.clone()
         mask_ner[:, 0] = 0 #CLS token is not used for NER
@@ -73,9 +73,8 @@ class NewsEncoder(torch.nn.Module):
                     logits[i, j, k, :] = self.ner_net(sentence_tokens[i, j, k, :])
         
         ######### Commented code below was without for loops I got confused with the reshaping and masking so for loops
-        
         output = torch.nn.functional.softmax(logits, dim=3)
-        return output
+        return output, mask_ner
         
         # bs, n, n_tokens, _ = sentence_tokens.shape
         # sentence_tokens = sentence_tokens.reshape(bs*n, n_tokens, -1) # Reshape to (batch_size*max_inview_articles*max_title_length, hidden_size)
@@ -135,5 +134,5 @@ class NewsEncoder(torch.nn.Module):
         
         # Get the category and ner predictions # TODO: JE Check if this deals correctly with padding
         cat = self.forward_cat(final_last_hidden_state, mask) #when there were no articles in the inview articles, the output will be nan
-        ner = self.forward_ner(final_last_hidden_state, mask)      
-        return final_news_embeddings, cat, ner
+        ner, mask_ner = self.forward_ner(final_last_hidden_state, mask)      
+        return final_news_embeddings, cat, ner, mask_ner

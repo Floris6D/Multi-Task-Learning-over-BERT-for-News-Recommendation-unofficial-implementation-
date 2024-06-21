@@ -135,8 +135,8 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     p2 = p2.reshape(bs*N2*tl2, num_ner)
     predictions = torch.cat([p1, p2], dim = 0)
     # Reshape mask
-    mask1   = mask1[:,:,:tl1].reshape(bs*N1*tl1)
-    mask2   = mask2[:,:,:tl2].reshape(bs*N2*tl2)
+    mask1   = mask1.reshape(bs*N1*tl1)
+    mask2   = mask2.reshape(bs*N2*tl2)
     mask = torch.cat([mask1, mask2], dim = 0)
     # Reshape labels
     l1      = l1[:,:,:tl1].reshape(bs*N1*tl1)

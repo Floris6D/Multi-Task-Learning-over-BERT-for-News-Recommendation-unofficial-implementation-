@@ -44,11 +44,12 @@ class EB_NeRDDataset(Dataset):
         self.load_behaviors(COLUMNS)
 
         # Now load and tokenize the data of the articles and create the lookup tables
-        self.load_tokenize_articles()
+        df_articles = self.load_tokenize_articles()
         
-        self.create_category_labels()
+        # Create category labels and add them to the data
+        df_articles = self.create_category_labels(df_articles)
 
-        self.generate_ner_tag()
+        df_articles = self.generate_ner_tag(df_articles)
         
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
         (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), self.y, self.id = self.transform()
@@ -123,18 +124,18 @@ class EB_NeRDDataset(Dataset):
         
     def load_tokenize_articles(self):
         # Load the article data
-        self.df_articles = pl.read_parquet(os.path.join(self.data_dir, 'articles.parquet'))
+        df_articles = pl.read_parquet(os.path.join(self.data_dir, 'articles.parquet'))
         
         # This concatenates the title with the subtitle in the DF, the cat_cal is the column name
         #TODO: JE: Maybe also add subtitle for prediction
-        #df_articles, cat_cal = concat_str_columns(df = self.df_articles, columns=['subtitle', 'title'])
+        #df_articles, cat_cal = concat_str_columns(df = df_articles, columns=['subtitle', 'title'])
         
         # This add the bert tokenization to the df
-        self.df_articles, col_name_token_title, col_name_mask = convert_text2encoding_with_transformers_tokenizers(self.df_articles, self.tokenizer, column='title', max_length=self.max_title_length)
+        df_articles, col_name_token_title, col_name_mask = convert_text2encoding_with_transformers_tokenizers(df_articles, self.tokenizer, column='title', max_length=self.max_title_length)
     
         # Now create lookup tables
-        article_mapping_token = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_token_title, article_col='article_id')
-        article_mapping_mask = create_article_id_to_value_mapping(df=self.df_articles, value_col=col_name_mask, article_col='article_id')
+        article_mapping_token = create_article_id_to_value_mapping(df=df_articles, value_col=col_name_token_title, article_col='article_id')
+        article_mapping_mask = create_article_id_to_value_mapping(df=df_articles, value_col=col_name_mask, article_col='article_id')
                 
         self.lookup_article_index, self.lookup_article_matrix = create_lookup_objects(
             article_mapping_token, unknown_representation='zeros'
@@ -144,6 +145,8 @@ class EB_NeRDDataset(Dataset):
         )
         
         self.unknown_index = [0]
+        
+        return df_articles
         
     def transform(self):
             # Map the article ids to the lookup table (not sure what this value should represent, I think it's the tokenized title)
@@ -216,105 +219,141 @@ class EB_NeRDDataset(Dataset):
                         
             return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), (self.y), impression_ids
     
-    def create_category_labels(self):       
+    def create_category_labels(self, df_articles): 
+        '''
+        This function loops over all the behaviors and is therefore not efficient but for simplicity I kept this
+        '''      
 
         # Get unique categories and their corresponding indices
-        unique_categories = self.df_articles.select(pl.col('category_str').unique()).to_series().to_list()
+        unique_categories = df_articles['category_str'].unique().to_list()
 
-        # Create a mapping dictionary for category to one-hot vectors
-        self.name_dict = {name: [0] * 25 for name in unique_categories}
-        for i, name in enumerate(unique_categories):
-            self.name_dict[name][i] = 1
-
-        # Map categories to vectors directly in the DataFrame
-        self.df_articles = self.df_articles.with_columns(
-            pl.col('category_str').apply(self.map_category_to_vector).alias('category_vector')
+        # Create a mapping dictionary for category to index
+        self.category_mapping = {name: i for i, name in enumerate(unique_categories)}
+        
+        # Map categories to idx directly in the DataFrame
+        self.df_articles = df_articles.with_columns(
+            pl.col('category_str').apply(self.map_category_to_vector).alias('category_idx')
         )
+        
+        # Also create a lookup dictionary for an article id to the category index
+        article_to_category_idx = dict(zip(self.df_articles['article_id'], self.df_articles['category_idx']))
 
-        # Convert article_id to category vectors using a dictionary for quick lookup
-        article_to_vector = {row['article_id']: row['category_vector'] for row in self.df_articles.to_dicts()}
-
-        # Generate labels using the precomputed dictionary
+        # Generate labels for all the inview articles
         labels = []
         for elem in self.df_behaviors['article_ids_inview']:
-            vectors = []
+            cat_idx = []
             for id in elem:
-                if id == 0:
-                    vectors.append([0] * 25)
+                if id == 0: # This means padding was introduced
+                    cat_idx.append(-1)
                 else:
-                    vectors.append(article_to_vector.get(id, [0] * 25))
-            labels.append(vectors)
+                    # Now return the category index of the article that belong to the id in the article_id column
+                    cat_idx.append(article_to_category_idx[id])
+            labels.append(cat_idx)
         
         self.c_y_inview = np.array(labels) 
+        # Generate labels for all the history articles
         labels = [] 
         for elem in self.df_behaviors['article_id_fixed']:
-            vectors = []            
+            cat_idx = []            
             for id in elem:
-                if id == 0:
-                    vectors.append([0] * 25)
+                if id == 0: # This means padding was introduced
+                    cat_idx.append(-1)
                 else:
-                    vectors.append(article_to_vector.get(id, [0] * 25))
-            labels.append(vectors)    
+                    cat_idx.append(article_to_category_idx[id])
+            labels.append(cat_idx)    
         
         self.c_y_his = np.array(labels)
         
     def map_category_to_vector(self, category_str):
-            return self.name_dict[category_str]
+            return self.category_mapping[category_str]
         
-    def generate_ner_tag(self):        
-        test1 = self.df_articles.select(pl.col('ner_clusters'))
-        test2 = self.df_articles.select(pl.col('title'))
-        article_ids = self.df_articles.select(pl.col('article_id'))         
-        article_ner_dict = {}
-        max = 28 #shape of the embedding        
-        for article_id, elem, elem2 in zip(article_ids.to_series().to_list(), test2.to_series().to_list(), test1.to_series().to_list()):
-            vector = []
-            internal = False
-            elem2 =[word for entry in elem2 for word in entry.split()]
-            for i in elem.split():
-                if internal and i in elem2:
-                    
-                    vector.append(2)
-                elif i in elem2:
-                    
-                    # print(i) 
-                    # print(elem2) 
-                    # print(elem)               
-                    vector.append(1)
-                    internal = True
-                    
-                else:
-                    vector.append(0)
-                    internal = False              
-                
-            article_ner_dict[article_id] = vector
-
+    def generate_ner_tag(self): 
+        
+        entity_groups = self.df_articles.explode('entity_groups')
+        entity_groups = entity_groups['entity_groups'].unique().to_list()
+        self.n_entities = len(entity_groups)
+        
+        # Create a mapping dictionary for category to index
+        self.entity_mapping = {name: i for i, name in enumerate(entity_groups)}
+        
+        # Now for each article and the create a list with the NER tags
         labels = []
-        for elem in self.df_behaviors['article_ids_inview']:
-            vectors = []
-            for id in elem:                
-                if id not in article_ner_dict.keys():                    
-                    vectors.append([0] * max)
+        for i in range(len(self.df_articles)):
+            row_entity = []
+            split_title = self.df_articles['title'][i].split()
+            for word in split_title:
+                # Now find the position of the word in the title in the 
+                idx = find_position_in_list(self.df_articles['neural_entity'][i], word)
+                if idx == -1:
+                    row_entity.append(0)
                 else:
-                    vector = article_ner_dict[id]
-                    vector.extend([0] * (max - len(vector)))    
-                    vectors.append(vector)          
-            labels.append(vectors)
+                    row_entity.append(self.entity_mapping[self.df_articles['entity_groups'][i][idx]])
+            
+                # Now make sure the list is as long as max_length
+                if len(row_entity) == self.max_title_length:
+                    break
+            # Now make sure the list is as long as max_length
+            if len(row_entity) < self.max_title_length:
+                row_entity.extend([0] * (self.max_title_length - len(row_entity)))
+            labels.append(row_entity)
+            
+        self.NER_labels = labels
         
-        self.ner_y_inview = np.array(labels)
-        labels = [] 
-        for elem in self.df_behaviors['article_id_fixed']:
-            vectors = []            
-            for id in elem:                
-                if id not in article_ner_dict.keys():                    
-                    vectors.append([0] * max)
-                else:
-                    vector = article_ner_dict[id]
-                    vector.extend([0] * (max - len(vector)))    
-                    vectors.append(vector)                    
-            labels.append(vectors)    
         
-        self.ner_y_his = np.array(labels)       
+        
+        # test1 = self.df_articles.select(pl.col('ner_clusters'))
+        # test2 = self.df_articles.select(pl.col('title'))
+        # article_ids = self.df_articles.select(pl.col('article_id'))         
+        # article_ner_dict = {}
+        # max = 28 #shape of the embedding        
+        # for article_id, elem, elem2 in zip(article_ids.to_series().to_list(), test2.to_series().to_list(), test1.to_series().to_list()):
+        #     vector = []
+        #     internal = False
+        #     elem2 =[word for entry in elem2 for word in entry.split()]
+        #     for i in elem.split():
+        #         if internal and i in elem2:
+                    
+        #             vector.append(2)
+        #         elif i in elem2:
+                    
+        #             # print(i) 
+        #             # print(elem2) 
+        #             # print(elem)               
+        #             vector.append(1)
+        #             internal = True
+                    
+        #         else:
+        #             vector.append(0)
+        #             internal = False              
+                
+        #     article_ner_dict[article_id] = vector
+
+        # labels = []
+        # for elem in self.df_behaviors['article_ids_inview']:
+        #     vectors = []
+        #     for id in elem:                
+        #         if id not in article_ner_dict.keys():                    
+        #             vectors.append([0] * max)
+        #         else:
+        #             vector = article_ner_dict[id]
+        #             vector.extend([0] * (max - len(vector)))    
+        #             vectors.append(vector)          
+        #     labels.append(vectors)
+        
+        # self.ner_y_inview = np.array(labels)
+        # labels = [] 
+        # for elem in self.df_behaviors['article_id_fixed']:
+        #     vectors = []            
+        #     for id in elem:                
+        #         if id not in article_ner_dict.keys():                    
+        #             vectors.append([0] * max)
+        #         else:
+        #             vector = article_ner_dict[id]
+        #             vector.extend([0] * (max - len(vector)))    
+        #             vectors.append(vector)                    
+        #     labels.append(vectors)    
+        
+        # self.ner_y_his = np.array(labels)       
 
 def pad_list(lst, length):
     lst = lst.to_list()
@@ -391,3 +430,7 @@ def convert_text2encoding_with_transformers_tokenizers(
     #     n_extending = length - len(input)        
     #     tokens = input + ([[0] * n_padding] * n_extending)
     #     return tokens[:length]
+    
+    
+def find_position_in_list(lst, word):
+    return lst.index(word) if word in lst else -1
