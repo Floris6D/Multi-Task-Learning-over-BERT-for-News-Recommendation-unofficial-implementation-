@@ -98,6 +98,10 @@ def category_loss(p1, p2, l1, l2):
     """
     First we untangle all the category predictions and labels
     Then apply cross entropy loss
+    p1 is prediction 1 related to the inview articles
+    p2 is prediction 2 related to the history articles
+    l1 is label 1 related to the inview articles
+    l2 is label 2 related to the history articles (this contains nans for padding)
     """
     bs, N1, num_cat = p1.shape
     bs, N2, num_cat = p2.shape
@@ -109,6 +113,13 @@ def category_loss(p1, p2, l1, l2):
     l2 = l2.reshape(bs*N2)
     predictions = torch.cat([p1, p2], dim = 0)
     labels = torch.cat([l1, l2], dim = 0)
+    
+    # Filter out the rows which only contain nans in the predictions
+    mask = ~torch.isnan(predictions).any(dim=1)
+    predictions = predictions[mask]
+    labels = labels[mask]
+    
+    # Return cross entropy loss
     return nn.CrossEntropyLoss()(predictions, labels)
 
 def NER_loss(p1, p2, l1, l2, mask1, mask2): 

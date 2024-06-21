@@ -59,15 +59,16 @@ class NewsEncoder(torch.nn.Module):
         last_idx = torch.argmax(torch.fliplr(mask_ner), dim=1)
         cols = mask_ner.shape[1] - 1 - last_idx
         mask_ner[torch.arange(mask_ner.shape[0]), cols] = 0 # Set the last token to 0, now cls and sep tokens are 0
+        mask_ner = mask_ner.reshape(sentence_tokens.shape[0], sentence_tokens.shape[1], -1) #Reshape
         
         logits = torch.nan*torch.ones(sentence_tokens.shape[0], sentence_tokens.shape[1], sentence_tokens.shape[2], self.num_ner)
         
         for i in range(sentence_tokens.shape[0]): # Loop over batches
             for j in range(sentence_tokens.shape[1]): # Loop over inview articles
-                if mask[i, j, :].sum() == 0:
+                if mask_ner[i, j, :].sum() == 0:
                     continue
                 for k in range(sentence_tokens.shape[2]):
-                    if mask[i, j, k] == 0:
+                    if mask_ner[i, j, k] == 0:
                         continue
                     logits[i, j, k, :] = self.ner_net(sentence_tokens[i, j, k, :])
         
