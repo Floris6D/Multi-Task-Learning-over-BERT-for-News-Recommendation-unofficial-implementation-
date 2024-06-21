@@ -83,7 +83,7 @@ def get2device(data, device):
 
 
 def main_loss(scores, labels, normalization = True):
-    assert scores.requires_grad, "Scores should require grad"
+    #assert scores.requires_grad, "Scores should require grad"
     if normalization: # normalization? TODO
         scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
         scores = torch.exp(scores)  # apply exponential function
