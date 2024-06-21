@@ -2,11 +2,11 @@ news_encoder:
   cfg_cat:
     num_layers: 2
     hidden_size: 124
-    output_size: 25
+    output_size: 25 #TODO JE: make dynamic based on the dataset
   cfg_ner:
     num_layers: 2
     hidden_size: 124
-    output_size: 3
+    output_size: 7 #TODO JE: make dynamic based on the dataset
 
 user_encoder:
   hidden_size: 128

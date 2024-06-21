@@ -138,13 +138,23 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     mask1   = mask1.reshape(bs*N1*tl1)
     mask2   = mask2.reshape(bs*N2*tl2)
     mask = torch.cat([mask1, mask2], dim = 0)
-    # Reshape labels
-    l1      = l1[:,:,:tl1].reshape(bs*N1*tl1)
-    l2      = l2[:,:,:tl2].reshape(bs*N2*tl2)
+    
+    # Reshape labels (insert a -1 for the cls token and remove last row of demension 2)
+    l1 = torch.cat([torch.zeros(bs, N1, 1).long(), l1], dim = 2)
+    l1 = l1[:,:,:tl1].reshape(bs*N1*tl1)
+    l2 = torch.cat([torch.zeros(bs, N2, 1).long(), l2], dim = 2)
+    l2 = l2[:,:,:tl2].reshape(bs*N2*tl2)
     labels = torch.cat([l1, l2], dim = 0).long()
+    
     # Apply mask
-    labels = torch.masked_select(labels, mask.bool())
+    labels = labels[mask.bool()]
     predictions = predictions[mask.bool()]
+    
+    # Laslty also remove the labels which are -1 #TODO: JE: This is caused by different tokenization by us and BERT
+    mask = labels != -1
+    labels = labels[mask]
+    predictions = predictions[mask]
+    
     # Calculate loss
     return nn.CrossEntropyLoss()(predictions, labels)
 

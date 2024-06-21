@@ -308,8 +308,9 @@ class EB_NeRDDataset(Dataset):
         # Generate labels for all the inview articles
         labels = []
         for elem in self.df_behaviors['article_ids_inview']:
-            ner_idx = []
+            ner_inview_idx = []
             for id in elem:
+                ner_idx = []
                 if id == 0: # This means padding was introduced
                     ner_idx.append([-1] * self.max_title_length)
                 else:
@@ -323,14 +324,17 @@ class EB_NeRDDataset(Dataset):
                         ner_label = ner_label[:self.max_title_length]
                     
                     ner_idx.append(ner_label)
-            labels.append(ner_idx)
+                ner_inview_idx.append(ner_idx)
+            labels.append(ner_inview_idx)
         
         self.ner_y_inview = np.array(labels)
+        self.ner_y_inview = self.ner_y_inview.squeeze(axis = 2)
         # Generate labels for all the history articles
         labels = [] 
         for elem in self.df_behaviors['article_id_fixed']:
-            ner_idx = []
+            ner_inview_idx = []
             for id in elem:
+                ner_idx = []
                 if id == 0: # This means padding was introduced
                     ner_idx.append([-1] * self.max_title_length)
                 else:
@@ -344,9 +348,11 @@ class EB_NeRDDataset(Dataset):
                         ner_label = ner_label[:self.max_title_length]
                     
                     ner_idx.append(ner_label)
-            labels.append(ner_idx)
+                ner_inview_idx.append(ner_idx)
+            labels.append(ner_inview_idx)
         
         self.ner_y_his = np.array(labels)
+        self.ner_y_his = self.ner_y_his.squeeze(axis = 2)
         
         
         
