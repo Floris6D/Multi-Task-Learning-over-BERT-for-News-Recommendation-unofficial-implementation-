@@ -107,8 +107,8 @@ def category_loss(p1, p2, l1, l2):
     bs, N2, num_cat = p2.shape
     p1 = p1.reshape(bs*N1, num_cat)
     p2 = p2.reshape(bs*N2, num_cat)
-    l1 = torch.argmax(l1, dim=2) # go from one-hot to index
-    l2 = torch.argmax(l2, dim=2) # go from one-hot to index
+    # l1 = torch.argmax(l1, dim=2) # go from one-hot to index OLD WAY
+    # l2 = torch.argmax(l2, dim=2) # go from one-hot to index
     l1 = l1.reshape(bs*N1)
     l2 = l2.reshape(bs*N2)
     predictions = torch.cat([p1, p2], dim = 0)

@@ -44,12 +44,12 @@ class EB_NeRDDataset(Dataset):
         self.load_behaviors(COLUMNS)
 
         # Now load and tokenize the data of the articles and create the lookup tables
-        df_articles = self.load_tokenize_articles()
+        self.df_articles = self.load_tokenize_articles()
         
         # Create category labels and add them to the data
-        df_articles = self.create_category_labels(df_articles)
+        self.create_category_labels() # Now correct
 
-        df_articles = self.generate_ner_tag(df_articles)
+        self.generate_ner_tag()
         
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
         (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), self.y, self.id = self.transform()
@@ -219,19 +219,20 @@ class EB_NeRDDataset(Dataset):
                         
             return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), (self.y), impression_ids
     
-    def create_category_labels(self, df_articles): 
+    def create_category_labels(self): 
         '''
         This function loops over all the behaviors and is therefore not efficient but for simplicity I kept this
         '''      
 
         # Get unique categories and their corresponding indices
-        unique_categories = df_articles['category_str'].unique().to_list()
+        unique_categories = self.df_articles['category_str'].unique().to_list()
+        unique_categories = sorted(unique_categories)
 
         # Create a mapping dictionary for category to index
         self.category_mapping = {name: i for i, name in enumerate(unique_categories)}
         
         # Map categories to idx directly in the DataFrame
-        self.df_articles = df_articles.with_columns(
+        self.df_articles = self.df_articles.with_columns(
             pl.col('category_str').apply(self.map_category_to_vector).alias('category_idx')
         )
         
@@ -271,33 +272,81 @@ class EB_NeRDDataset(Dataset):
         
         entity_groups = self.df_articles.explode('entity_groups')
         entity_groups = entity_groups['entity_groups'].unique().to_list()
+        # Remove none in the list
+        entity_groups = [x for x in entity_groups if x is not None]
+        
+        # Sort the list in alphabetical order
+        entity_groups = sorted(entity_groups) # Sort the list in alphabetical order
+        
+        # Add a None to the beginning of the list
+        entity_groups.insert(0, None)
+        
         self.n_entities = len(entity_groups)
         
         # Create a mapping dictionary for category to index
         self.entity_mapping = {name: i for i, name in enumerate(entity_groups)}
         
         # Now for each article and the create a list with the NER tags
+        NER_labels = []
+        for i in range(len(self.df_articles)): # Loop over all the articles
+            row_entity = [0] * len(self.df_articles['title'][i].split()) # Create a list with the same length as the title (0 is None)
+            for ner_cluster, entity_group in zip(self.df_articles['ner_clusters'][i], self.df_articles['entity_groups'][i]): # Loop over all the NER clusters
+                # Now find the position of the ner_cluster in the title
+                idx = find_named_entity_position(self.df_articles['title'][i].split(), ner_cluster.split())
+                if idx != -1:
+                    for j in range(len(ner_cluster.split())):
+                        row_entity[idx + j] = self.entity_mapping[entity_group]
+            NER_labels.append(row_entity)
+            
+        # Create a new column with the NER_labels in the articles DataFrame
+        self.df_articles = self.df_articles.with_columns(pl.Series('ner_labels', NER_labels))
+        
+        # Create a lookup dictionary for an article id to the NER labels
+        article_to_NER = dict(zip(self.df_articles['article_id'], self.df_articles['ner_labels']))
+        
+        
+        # Generate labels for all the inview articles
         labels = []
-        for i in range(len(self.df_articles)):
-            row_entity = []
-            split_title = self.df_articles['title'][i].split()
-            for word in split_title:
-                # Now find the position of the word in the title in the 
-                idx = find_position_in_list(self.df_articles['neural_entity'][i], word)
-                if idx == -1:
-                    row_entity.append(0)
+        for elem in self.df_behaviors['article_ids_inview']:
+            ner_idx = []
+            for id in elem:
+                if id == 0: # This means padding was introduced
+                    ner_idx.append([-1] * self.max_title_length)
                 else:
-                    row_entity.append(self.entity_mapping[self.df_articles['entity_groups'][i][idx]])
-            
-                # Now make sure the list is as long as max_length
-                if len(row_entity) == self.max_title_length:
-                    break
-            # Now make sure the list is as long as max_length
-            if len(row_entity) < self.max_title_length:
-                row_entity.extend([0] * (self.max_title_length - len(row_entity)))
-            labels.append(row_entity)
-            
-        self.NER_labels = labels
+                    # Now return the category index of the article that belong to the id in the article_id column
+                    ner_label = article_to_NER[id].to_list()
+                    
+                    # Ner label should be the max length
+                    if len(ner_label) < self.max_title_length:
+                        ner_label.extend([-1] * (self.max_title_length - len(ner_label)))
+                    elif len(ner_label) > self.max_title_length:
+                        ner_label = ner_label[:self.max_title_length]
+                    
+                    ner_idx.append(ner_label)
+            labels.append(ner_idx)
+        
+        self.ner_y_inview = np.array(labels)
+        # Generate labels for all the history articles
+        labels = [] 
+        for elem in self.df_behaviors['article_id_fixed']:
+            ner_idx = []
+            for id in elem:
+                if id == 0: # This means padding was introduced
+                    ner_idx.append([-1] * self.max_title_length)
+                else:
+                    # Now return the category index of the article that belong to the id in the article_id column
+                    ner_label = article_to_NER[id].to_list()
+                    
+                    # Ner label should be the max length
+                    if len(ner_label) < self.max_title_length:
+                        ner_label.extend([-1] * (self.max_title_length - len(ner_label)))
+                    elif len(ner_label) > self.max_title_length:
+                        ner_label = ner_label[:self.max_title_length]
+                    
+                    ner_idx.append(ner_label)
+            labels.append(ner_idx)
+        
+        self.ner_y_his = np.array(labels)
         
         
         
@@ -432,5 +481,14 @@ def convert_text2encoding_with_transformers_tokenizers(
     #     return tokens[:length]
     
     
-def find_position_in_list(lst, word):
-    return lst.index(word) if word in lst else -1
+def find_named_entity_position(title_list, named_entity):
+    len_title = len(title_list)
+    len_entity = len(named_entity)
+    
+    # Loop through the title list with a window of size len_entity
+    for i in range(len_title - len_entity + 1):
+        # Check if the current slice matches the named entity
+        if title_list[i:i + len_entity] == named_entity:
+            return i
+    
+    return -1  # Return -1 if the named entity is not found
