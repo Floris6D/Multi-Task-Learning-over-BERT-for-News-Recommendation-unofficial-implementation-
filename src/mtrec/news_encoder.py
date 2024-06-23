@@ -3,15 +3,20 @@ from transformers import BertModel
 
 
 class NewsEncoder(torch.nn.Module):
-    def __init__(self, embedding_dim, bert, cfg_cat, cfg_ner):
+    def __init__(self, embedding_dim, bert, cfg_cat, cfg_ner, extended_NER = False):
         super(NewsEncoder, self).__init__()
-        self.cat_net = self.initialize_network(embedding_dim, cfg_cat)
-        self.ner_net = self.initialize_network(embedding_dim, cfg_ner)
-        self.num_ner = cfg_ner["output_size"]
+        if extended_NER:
+            self.num_ner = cfg_ner["extended_output_size"]
+        elif extended_NER is False:
+            self.num_ner = cfg_ner["output_size"]
+        
+        self.cat_net = self.initialize_network(embedding_dim, cfg_cat, cfg_cat["output_size"])
+        self.ner_net = self.initialize_network(embedding_dim, cfg_ner, self.num_ner)
+
         self.bert = bert
 
-    def initialize_network(self, input_size, cfg, act_fn = torch.nn.ReLU()):
-        num_layers, hidden_size, output_size = cfg["num_layers"], cfg["hidden_size"], cfg["output_size"]
+    def initialize_network(self, input_size, cfg, output_size, act_fn = torch.nn.ReLU()):
+        num_layers, hidden_size, output_size = cfg["num_layers"], cfg["hidden_size"]
         if num_layers < 1:
             raise ValueError("Number of layers must be at least 1")
         elif num_layers == 1:

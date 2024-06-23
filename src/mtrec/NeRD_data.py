@@ -3,6 +3,7 @@ import random
 import numpy as np
 from pathlib import Path
 import polars as pl
+import json
 
 from ebrec.utils._polars import slice_join_dataframes, concat_str_columns, filter_maximum_lengths_from_list
 from ebrec.utils._behaviors import (
@@ -49,7 +50,11 @@ class EB_NeRDDataset(Dataset):
         # Create category labels and add them to the data
         self.create_category_labels() # Now correct
 
-        self.generate_ner_tag()
+        # Our extension for extended NER
+        if self.extended_NER is False:
+            self.generate_ner_tag()
+        elif self.extended_NER is True:
+            self.generate_extended_ner_tag()
         
         # Lastly transform the data to get tokens and the right format for the model using the lookup tables
         (self.his_input_title, self.mask_his_input_title, self.pred_input_title, self.mask_pred_input_title), self.y, self.id = self.transform()
@@ -224,12 +229,19 @@ class EB_NeRDDataset(Dataset):
         This function loops over all the behaviors and is therefore not efficient but for simplicity I kept this
         '''      
 
-        # Get unique categories and their corresponding indices
-        unique_categories = self.df_articles['category_str'].unique().to_list()
-        unique_categories = sorted(unique_categories)
+        # # Get unique categories and their corresponding indices
+        # unique_categories = self.df_articles['category_str'].unique().to_list()
+        # unique_categories = sorted(unique_categories)
 
-        # Create a mapping dictionary for category to index
-        self.category_mapping = {name: i for i, name in enumerate(unique_categories)}
+        # # Create a mapping dictionary for category to index
+        # self.category_mapping = {name: i for i, name in enumerate(unique_categories)}
+        
+        # with open(os.path.join('src/mtrec/configs', 'category_mapping.json'), 'w') as f:
+        #     json.dump(self.category_mapping, f)
+        
+        # Now load the category mapping (to prevent ordering changes)
+        with open(os.path.join('src/mtrec/configs', 'category_mapping.json'), 'r') as f:
+            self.category_mapping = json.load(f)
         
         # Map categories to idx directly in the DataFrame
         self.df_articles = self.df_articles.with_columns(
@@ -268,23 +280,114 @@ class EB_NeRDDataset(Dataset):
     def map_category_to_vector(self, category_str):
             return self.category_mapping[category_str]
         
-    def generate_ner_tag(self): 
         
-        entity_groups = self.df_articles.explode('entity_groups')
-        entity_groups = entity_groups['entity_groups'].unique().to_list()
-        # Remove none in the list
-        entity_groups = [x for x in entity_groups if x is not None]
+    def generate_ner_tag(self):
+        # entity_groups = ['O', 'B-P', 'I-P']
         
-        # Sort the list in alphabetical order
-        entity_groups = sorted(entity_groups) # Sort the list in alphabetical order
+        # # Create a mapping dictionary for category to index
+        # self.entity_mapping = {name: i for i, name in enumerate(entity_groups)}
         
-        # Add a None to the beginning of the list
-        entity_groups.insert(0, None)
+        # with open(os.path.join('src/mtrec/configs', 'entity_mapping.json'), 'w') as f:
+        #     json.dump(self.entity_mapping, f)
         
-        self.n_entities = len(entity_groups)
+        # Load the entity mapping (too make sure ordering doesn't change when loading the data again)
+        with open(os.path.join('src/mtrec/configs', 'entity_mapping.json'), 'r') as f:
+            self.entity_mapping = json.load(f)
         
-        # Create a mapping dictionary for category to index
-        self.entity_mapping = {name: i for i, name in enumerate(entity_groups)}
+        # Now for each article and the create a list with the NER tags
+        NER_labels = []
+        for i in range(len(self.df_articles)): # Loop over all the articles
+            row_entity = ['O'] * len(self.df_articles['title'][i].split()) # Create a list with the same length as the title (0 is None)
+            for ner_cluster, entity_group in zip(self.df_articles['ner_clusters'][i], self.df_articles['entity_groups'][i]): # Loop over all the NER clusters
+                # Now find the position of the ner_cluster in the title
+                idx = find_named_entity_position(self.df_articles['title'][i].split(), ner_cluster.split())
+                if idx != -1:
+                    for j in range(len(ner_cluster.split())):
+                        row_entity[idx + j] = self.entity_mapping[entity_group]
+            NER_labels.append(row_entity)
+            
+        # Create a new column with the NER_labels in the articles DataFrame
+        self.df_articles = self.df_articles.with_columns(pl.Series('ner_labels', NER_labels))
+        
+        # Create a lookup dictionary for an article id to the NER labels
+        article_to_NER = dict(zip(self.df_articles['article_id'], self.df_articles['ner_labels']))
+        
+        
+        # Generate labels for all the inview articles
+        labels = []
+        for elem in self.df_behaviors['article_ids_inview']:
+            ner_inview_idx = []
+            for id in elem:
+                ner_idx = []
+                if id == 0: # This means padding was introduced
+                    ner_idx.append([-1] * self.max_title_length)
+                else:
+                    # Now return the category index of the article that belong to the id in the article_id column
+                    ner_label = article_to_NER[id].to_list()
+                    
+                    # Ner label should be the max length
+                    if len(ner_label) < self.max_title_length:
+                        ner_label.extend([-1] * (self.max_title_length - len(ner_label)))
+                    elif len(ner_label) > self.max_title_length:
+                        ner_label = ner_label[:self.max_title_length]
+                    
+                    ner_idx.append(ner_label)
+                ner_inview_idx.append(ner_idx)
+            labels.append(ner_inview_idx)
+        
+        self.ner_y_inview = np.array(labels)
+        self.ner_y_inview = self.ner_y_inview.squeeze(axis = 2)
+        # Generate labels for all the history articles
+        labels = [] 
+        for elem in self.df_behaviors['article_id_fixed']:
+            ner_inview_idx = []
+            for id in elem:
+                ner_idx = []
+                if id == 0: # This means padding was introduced
+                    ner_idx.append([-1] * self.max_title_length)
+                else:
+                    # Now return the category index of the article that belong to the id in the article_id column
+                    ner_label = article_to_NER[id].to_list()
+                    
+                    # Ner label should be the max length
+                    if len(ner_label) < self.max_title_length:
+                        ner_label.extend([-1] * (self.max_title_length - len(ner_label)))
+                    elif len(ner_label) > self.max_title_length:
+                        ner_label = ner_label[:self.max_title_length]
+                    
+                    ner_idx.append(ner_label)
+                ner_inview_idx.append(ner_idx)
+            labels.append(ner_inview_idx)
+        
+        self.ner_y_his = np.array(labels)
+        self.ner_y_his = self.ner_y_his.squeeze(axis = 2)
+        
+        
+        
+    def generate_extended_ner_tag(self): 
+        
+        # entity_groups = self.df_articles.explode('entity_groups')
+        # entity_groups = entity_groups['entity_groups'].unique().to_list()
+        # # Remove none in the list
+        # entity_groups = [x for x in entity_groups if x is not None]
+        
+        # # Sort the list in alphabetical order
+        # entity_groups = sorted(entity_groups) # Sort the list in alphabetical order
+        
+        # # Add a None to the beginning of the list
+        # entity_groups.insert(0, None)
+        
+        # self.n_entities = len(entity_groups)
+        
+        # # Create a mapping dictionary for category to index
+        # self.entity_mapping = {name: i for i, name in enumerate(entity_groups)}
+        
+        # with open(os.path.join('src/mtrec/configs', 'extended_entity_mapping.json'), 'w') as f:
+        #     json.dump(self.entity_mapping, f)
+        
+        # Open the entity mapping file to prevent ordering changes
+        with open(os.path.join('src/mtrec/configs', 'extended_entity_mapping.json'), 'r') as f:
+            self.entity_mapping = json.load(f)
         
         # Now for each article and the create a list with the NER tags
         NER_labels = []

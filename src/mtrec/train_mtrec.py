@@ -11,10 +11,12 @@ def main():
     args = parser.parse_args()
     cfg = load_configuration(args.file)
     device =  "cuda" if torch.cuda.is_available() else "cpu"
-    Mtrec_model = Mtrec(cfg, device=device).to(device)
     
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
-    (dataloader_train, dataloader_val) = get_dataloaders(cfg)
+    (dataloader_train, dataloader_val)= get_dataloaders(cfg)
+    
+    # Get the model
+    Mtrec_model = Mtrec(cfg, device=device).to(device)
 
     model, best_validation_loss =       train(model     = Mtrec_model, 
                                        dataloader_train = dataloader_train, 

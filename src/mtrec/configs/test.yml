@@ -6,7 +6,8 @@ news_encoder:
   cfg_ner:
     num_layers: 2
     hidden_size: 124
-    output_size: 7 #TODO JE: make dynamic based on the dataset
+    output_size: 3 #TODO JE: make dynamic based on the dataset
+    extend_output_size: 7
 
 user_encoder:
   hidden_size: 128
@@ -25,6 +26,7 @@ dataset:
   max_title_length: 20
   npratio: 4
   dataset_fraction: 0.01
+  extended_NER: False
 
 model:
   hidden: 768
