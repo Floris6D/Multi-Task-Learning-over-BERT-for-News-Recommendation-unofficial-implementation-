@@ -303,7 +303,10 @@ class EB_NeRDDataset(Dataset):
                 idx = find_named_entity_position(self.df_articles['title'][i].split(), ner_cluster.split())
                 if idx != -1:
                     for j in range(len(ner_cluster.split())):
-                        row_entity[idx + j] = self.entity_mapping[entity_group]
+                        if j == 0:
+                            row_entity[idx + j] = 'B-P'
+                        else:
+                            row_entity[idx + j] = 'I-P'
             NER_labels.append(row_entity)
             
         # Create a new column with the NER_labels in the articles DataFrame
