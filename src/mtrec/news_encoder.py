@@ -16,7 +16,7 @@ class NewsEncoder(torch.nn.Module):
         self.bert = bert
 
     def initialize_network(self, input_size, cfg, output_size, act_fn = torch.nn.ReLU()):
-        num_layers, hidden_size, output_size = cfg["num_layers"], cfg["hidden_size"]
+        num_layers, hidden_size = cfg["num_layers"], cfg["hidden_size"]
         if num_layers < 1:
             raise ValueError("Number of layers must be at least 1")
         elif num_layers == 1:
