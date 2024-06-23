@@ -227,7 +227,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
         for param in param_group['params']:
             param.requires_grad=True
 
-    #optimizer = PCGrad(optimizer) #TODO: PCGrad
+    optimizer = PCGrad(optimizer) #TODO: PCGrad
     
     #initialize to track best
     best_loss = float('inf')
