@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 import polars as pl
 import json
+import re
 
 from ebrec.utils._polars import slice_join_dataframes, concat_str_columns, filter_maximum_lengths_from_list
 from ebrec.utils._behaviors import (
@@ -297,12 +298,12 @@ class EB_NeRDDataset(Dataset):
         # Now for each article and the create a list with the NER tags
         NER_labels = []
         for i in range(len(self.df_articles)): # Loop over all the articles
-            row_entity = ['O'] * len(self.df_articles['title'][i].split()) # Create a list with the same length as the title (0 is None)
+            row_entity = ['O'] * len(re.split(r'[ -]+', self.df_articles['title'][i])) # Create a list with the same length as the title (0 is None)
             for ner_cluster, entity_group in zip(self.df_articles['ner_clusters'][i], self.df_articles['entity_groups'][i]): # Loop over all the NER clusters
                 # Now find the position of the ner_cluster in the title
-                idx = find_named_entity_position(self.df_articles['title'][i].split(), ner_cluster.split())
+                idx = find_named_entity_position(re.split(r'[ -]+', self.df_articles['title'][i]), re.split(r'[ -]+', ner_cluster))
                 if idx != -1:
-                    for j in range(len(ner_cluster.split())):
+                    for j in range(len(re.split(r'[ -]+', ner_cluster))):
                         if j == 0:
                             row_entity[idx + j] = 'B-P'
                         else:
@@ -395,12 +396,12 @@ class EB_NeRDDataset(Dataset):
         # Now for each article and the create a list with the NER tags
         NER_labels = []
         for i in range(len(self.df_articles)): # Loop over all the articles
-            row_entity = [0] * len(self.df_articles['title'][i].split()) # Create a list with the same length as the title (0 is None)
+            row_entity = [0] * len(re.split(r'[ -]+', self.df_articles['title'][i])) # Create a list with the same length as the title (0 is None)
             for ner_cluster, entity_group in zip(self.df_articles['ner_clusters'][i], self.df_articles['entity_groups'][i]): # Loop over all the NER clusters
                 # Now find the position of the ner_cluster in the title
-                idx = find_named_entity_position(self.df_articles['title'][i].split(), ner_cluster.split())
+                idx = find_named_entity_position(re.split(r'[ -]+', self.df_articles['title'][i]), re.split(r'[ -]+', ner_cluster))
                 if idx != -1:
-                    for j in range(len(ner_cluster.split())):
+                    for j in range(len(re.split(r'[ -]+', ner_cluster))):
                         row_entity[idx + j] = self.entity_mapping[entity_group]
             NER_labels.append(row_entity)
             
