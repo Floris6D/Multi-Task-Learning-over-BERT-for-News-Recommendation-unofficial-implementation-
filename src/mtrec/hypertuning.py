@@ -50,13 +50,15 @@ def test_config(trial, cfg_base, device):
                                             use_wandb        = cfg["wandb"],
                                             hypertuning      = True)
     
-    except Exception as e:
-        print(f"EXCEPTION AS : {e}")
+    except KeyboardInterrupt:
         best_validation_loss = 1000
+    # except Exception as e:
+    #     print(f"EXCEPTION AS : {e}")
+    #     best_validation_loss = 1000
     
-    finally:
-        print(f"Time taken for trial: {time.time()-start}")
-        return best_validation_loss
+    
+    print(f"Time taken for trial: {time.time()-start}")
+    return best_validation_loss
 
 def main():
     parser = argparse.ArgumentParser(description='Process some arguments.')
