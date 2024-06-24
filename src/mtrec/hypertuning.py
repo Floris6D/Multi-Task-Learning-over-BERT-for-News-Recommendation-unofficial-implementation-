@@ -8,8 +8,9 @@ from mtrec_class import Mtrec
 import torch
 import time
 import yaml
+from utils import timer
 
-
+@timer
 def test_config(trial, cfg_, device):
     start = time.time()
     cfg = copy.deepcopy(cfg_)

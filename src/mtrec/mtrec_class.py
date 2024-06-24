@@ -5,6 +5,7 @@ from peft import LoraConfig, get_peft_model
 from trainer import get2device, category_loss, NER_loss, cross_product, main_loss
 import torch
 import polars as pl
+from utils import timer
 
 class Mtrec(torch.nn.Module):
     def __init__(self, cfg, device:str = "cpu"):
@@ -19,7 +20,7 @@ class Mtrec(torch.nn.Module):
         
         self.device = device
     
-    
+    @timer
     def train(self, dataloader_train, optimizer, print_flag, cfg, scoring_function:callable = cross_product, criterion:callable = main_loss):
         total_loss = 0
         total_main_loss = 0
@@ -54,6 +55,7 @@ class Mtrec(torch.nn.Module):
             optimizer.step()
             total_loss += main_loss.item() + cat_loss.item() + ner_loss.item()
             total_main_loss += main_loss.item()
+            break #TODO verwijderen!!!
         
         # TODO: JE willen we delen door totaal aantal datapunten want dan moet je len(dataloader_train.dataset) doen
         total_loss /= len(dataloader_train.dataset)
@@ -64,6 +66,7 @@ class Mtrec(torch.nn.Module):
             
         return total_loss, total_main_loss
     
+    @timer
     def validate(self, dataloader_val, print_flag, cfg, scoring_function:callable = cross_product, criterion:callable = main_loss):
         #validation
         self.user_encoder.eval()
@@ -97,6 +100,7 @@ class Mtrec(torch.nn.Module):
                 # Metrics
                 total_loss_val += main_loss 
                 total_main_loss_val += main_loss
+                break #TODO verwijderen!!!
         
         
         # TODO: JE willen we delen door totaal aantal datapunten want dan moet je len(dataloader_train.dataset) doen
