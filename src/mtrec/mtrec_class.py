@@ -5,22 +5,23 @@ from peft import LoraConfig, get_peft_model
 from trainer import get2device, category_loss, NER_loss, cross_product, main_loss
 import torch
 import polars as pl
+from utils import timer
 
 class Mtrec(torch.nn.Module):
     def __init__(self, cfg, device:str = "cpu"):
         super().__init__()
-        bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name'])
+        bert = BertModel.from_pretrained(cfg['model']['pretrained_model_name']).to(device)
         # Get the embedding dimension
         embedding_dim = bert.config.hidden_size
         self.bert = get_peft_model(bert, LoraConfig(cfg["lora_config"]))
         
-        self.user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim)
-        self.news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim, extended_NER = cfg['dataset']['extended_NER'])
+        self.user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim).to(device)
+        self.news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim, extended_NER = cfg['dataset']['extended_NER']).to(device)
         
         self.device = device
     
-    
-    def train(self, dataloader_train, optimizer, print_flag, scoring_function:callable = cross_product, criterion:callable = main_loss):
+    @timer
+    def train(self, dataloader_train, optimizer, print_flag, cfg, scoring_function:callable = cross_product, criterion:callable = main_loss):
         total_loss = 0
         total_main_loss = 0
         self.news_encoder.train()
@@ -33,22 +34,28 @@ class Mtrec(torch.nn.Module):
             inview_news_embeddings, inview_news_cat, inview_news_ner, inview_mask_ner = self.news_encoder(news_tokens, news_mask)  
             history_news_embeddings, history_news_cat, history_news_ner, history_mask_ner = self.news_encoder(user_histories, user_mask) 
             user_embeddings = self.user_encoder(history_news_embeddings)
-            
-            # AUX task: Category prediction            
-            cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
-            
-            # AUX task: NER 
-            ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, inview_mask_ner, history_mask_ner)
-            
             # MAIN task: Click prediction
             scores = scoring_function(user_embeddings, inview_news_embeddings)
             main_loss = criterion(scores, labels)
+            losses = [main_loss]
+            # AUX task: Category prediction            
+            if not cfg["skip_cat"]:
+                cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
+                losses.append(cat_loss)
+            # AUX task: NER 
+            if not cfg["skip_ner"]:
+                ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, inview_mask_ner, history_mask_ner)
+                losses.append(ner_loss)
+            
             # Backpropagation           
-            #optimizer.pc_backward([main_loss, cat_loss, ner_loss]) #TODO: PCGrad
-            main_loss.backward()
+            if not cfg["skip_gs"]: 
+                optimizer.pc_backward(losses) 
+            else:
+                main_loss.backward()
             optimizer.step()
             total_loss += main_loss.item() + cat_loss.item() + ner_loss.item()
             total_main_loss += main_loss.item()
+            break #TODO verwijderen!!!
         
         # TODO: JE willen we delen door totaal aantal datapunten want dan moet je len(dataloader_train.dataset) doen
         total_loss /= len(dataloader_train.dataset)
@@ -59,7 +66,8 @@ class Mtrec(torch.nn.Module):
             
         return total_loss, total_main_loss
     
-    def validate(self, dataloader_val, print_flag, scoring_function:callable = cross_product, criterion:callable = main_loss):
+    @timer
+    def validate(self, dataloader_val, print_flag, cfg, scoring_function:callable = cross_product, criterion:callable = main_loss):
         #validation
         self.user_encoder.eval()
         self.news_encoder.eval()
@@ -76,17 +84,23 @@ class Mtrec(torch.nn.Module):
                 inview_news_embeddings, inview_news_cat, inview_news_ner, inview_mask_ner = self.news_encoder(news_tokens, news_mask)  
                 history_news_embeddings, history_news_cat, history_news_ner, history_mask_ner = self.news_encoder(user_histories, user_mask) 
                 user_embeddings = self.user_encoder(history_news_embeddings)
-
+                total_loss_val = 0
                 # AUX task: Category prediction            
-                cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
+                if not cfg["skip_cat"]:
+                    cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
+                    total_loss_val += cat_loss.item()
+                
                 # AUX task: NER 
-                ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, inview_mask_ner, history_mask_ner)                    
+                if not cfg["skip_ner"]:
+                    ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, inview_mask_ner, history_mask_ner)
+                    total_loss_val += ner_loss.item()
                 # MAIN task: Click prediction
                 scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
-                main_loss = criterion(scores, labels)
+                main_loss = criterion(scores, labels).item()
                 # Metrics
-                total_loss_val += main_loss.item() + cat_loss.item() + ner_loss.item()
-                total_main_loss_val += main_loss.item()
+                total_loss_val += main_loss 
+                total_main_loss_val += main_loss
+                break #TODO verwijderen!!!
         
         
         # TODO: JE willen we delen door totaal aantal datapunten want dan moet je len(dataloader_train.dataset) doen

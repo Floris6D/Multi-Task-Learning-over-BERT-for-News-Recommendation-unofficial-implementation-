@@ -10,13 +10,17 @@ news_encoder:
 
 user_encoder:
   hidden_size: 128
+
 trainer:
-  optimizer: adam
-  epochs: 40
+  optimizer: adamw
+  epochs: 2
   lr_user: 0.001
   lr_news: 0.001
   lr_bert: 0.0001
   batch_size: 2
+  skip_ner: False
+  skip_cat: False
+  skip_gs: False
 
 dataset:
   data_dir: data_demo
@@ -24,6 +28,7 @@ dataset:
   max_title_length: 20
   npratio: 4
   dataset_fraction: 0.01
+  extended_NER: False
 
 model:
   hidden: 768
@@ -37,3 +42,5 @@ lora_config:
     - "value"  # Targeted modules in BERT
   lora_dropout: 0.1  # Dropout rate
   bias: "none"  # Bias type 
+
+wandb: True

@@ -2,23 +2,22 @@ news_encoder:
   cfg_cat:
     num_layers: 2
     hidden_size: 124
-    output_size: 25 #TODO JE: make dynamic based on the dataset
+    output_size: 25
   cfg_ner:
     num_layers: 2
     hidden_size: 124
-    output_size: 3 #TODO JE: make dynamic based on the dataset
-    extend_output_size: 7
+    output_size: 3
 
 user_encoder:
   hidden_size: 128
 
 trainer:
   optimizer: adamw
-  epochs: 100
+  epochs: 2
   lr_user: 0.001
   lr_news: 0.001
-  lr_bert: 0.00001
-  batch_size: 64
+  lr_bert: 0.0001
+  batch_size: 1024
   skip_ner: False
   skip_cat: False
   skip_gs: False

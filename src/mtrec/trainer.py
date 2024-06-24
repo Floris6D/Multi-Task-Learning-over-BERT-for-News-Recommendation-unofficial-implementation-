@@ -138,23 +138,19 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     mask1   = mask1.reshape(bs*N1*tl1)
     mask2   = mask2.reshape(bs*N2*tl2)
     mask = torch.cat([mask1, mask2], dim = 0)
-    
     # Reshape labels (insert a -1 for the cls token and remove last row of demension 2)
     l1 = torch.cat([torch.zeros(bs, N1, 1).long(), l1], dim = 2)
     l1 = l1[:,:,:tl1].reshape(bs*N1*tl1)
     l2 = torch.cat([torch.zeros(bs, N2, 1).long(), l2], dim = 2)
     l2 = l2[:,:,:tl2].reshape(bs*N2*tl2)
     labels = torch.cat([l1, l2], dim = 0).long()
-    
     # Apply mask
     labels = labels[mask.bool()]
     predictions = predictions[mask.bool()]
-    
     # Laslty also remove the labels which are -1 #TODO: JE: This is caused by different tokenization by us and BERT
     mask = labels != -1
     labels = labels[mask]
     predictions = predictions[mask]
-    
     # Calculate loss
     return nn.CrossEntropyLoss()(predictions, labels)
 
@@ -172,7 +168,8 @@ def plot_loss(loss_train, loss_val, title:str = "Loss", save_dir:str = "default_
     plt.savefig(f"{save_dir}/{title}.png") 
     
 def train(model, dataloader_train, dataloader_val, cfg, 
-          print_flag = True, save_dir:str = "saved_models"):
+          print_flag = True, save_dir:str = "saved_models", use_wandb:bool = False, 
+          hypertuning:bool = False):
     """
     Function to train the model on the given dataset.
     
@@ -186,7 +183,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
         dataloader_val (torch.utils.data.DataLoader): The dataloader for the validation dataset.
         device (torch.device): The device to be used for training.
     """
-
+    if use_wandb: import wandb
     #initialize optimizer
     user_encoder = model.user_encoder
     news_encoder = model.news_encoder
@@ -227,11 +224,13 @@ def train(model, dataloader_train, dataloader_val, cfg,
         for param in param_group['params']:
             param.requires_grad=True
 
-    optimizer = PCGrad(optimizer) #TODO: PCGrad
+    if not cfg["skip_gs"]: 
+        optimizer = PCGrad(optimizer) #TODO: PCGrad
     
     #initialize to track best
     best_loss = float('inf')
     save_num = 0
+
     # Ensure the save directory ends with a slash
     if not save_dir.endswith('/'):
         save_dir += '/'
@@ -250,17 +249,23 @@ def train(model, dataloader_train, dataloader_val, cfg,
     training_losses, validation_losses = [], []
     if print_flag: print(f"Saving models to {save_path}")
     try: #training can be interrupted by catching KeyboardInterrupt
-        #training
         for epoch in range(cfg['epochs']):
             if print_flag: print(f"Epoch {epoch} / {cfg['epochs']}")
             
             # Training
-            total_loss, total_main_loss = model.train(dataloader_train, optimizer, print_flag)
+            total_loss, total_main_loss = model.train(dataloader_train, optimizer, print_flag, cfg)
             training_losses.append(total_main_loss)
 
-            #validation
-            total_loss_val, total_main_loss_val = model.validate(dataloader_val, print_flag)
+            # Validation
+            total_loss_val, total_main_loss_val = model.validate(dataloader_val, print_flag, cfg)
             validation_losses.append(total_main_loss_val)
+            
+            # Log the losses to wandb
+            if use_wandb and not hypertuning:
+                wandb.log({"Training Main Loss": total_main_loss, "Training Total Loss": total_loss,
+                        "Validation Main Loss": total_main_loss_val, "Validation Total Loss": total_loss_val})
+            elif use_wandb and hypertuning:
+                wandb.log({"Validation Main Loss": total_main_loss_val})
             #saving best models
             if total_loss_val < best_loss:   
                 best_loss = total_loss_val
@@ -270,6 +275,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
                 best_model = copy.deepcopy(model)
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best model so far.")
+    if use_wandb and not hypertuning: wandb.finish()
     plot_loss(training_losses, validation_losses, save_dir = save_path)
     return best_model, best_loss
 

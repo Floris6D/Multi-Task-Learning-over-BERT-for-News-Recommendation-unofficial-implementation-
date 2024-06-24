@@ -13,7 +13,7 @@ user_encoder:
 
 trainer:
   optimizer: adam
-  epochs: 1
+  epochs: 10
   lr_user: 0 #Tuned
   lr_news: 0 #Tuned
   lr_bert: 0 #Tuned
@@ -25,6 +25,7 @@ dataset:
   max_title_length: 20
   npratio: 4
   dataset_fraction: 0.01
+  extended_NER: False
 
 model:
   hidden: 768
@@ -40,7 +41,7 @@ lora_config:
   bias: "none"  # Bias type 
 
 hypertuning:
-  hidden_size: [128, 256, 512]
+  hidden_size: [128, 256, 512, 1024, 2048]
   num_layers:
     min: 1
     max: 5
@@ -48,3 +49,6 @@ hypertuning:
   lr:
     min: 1e-06
     max: 5e-03
+  optimizer: [adam, adamw, sgd]
+
+wandb: True
