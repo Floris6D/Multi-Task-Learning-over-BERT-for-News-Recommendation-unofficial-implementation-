@@ -1,6 +1,4 @@
 import argparse
-from user_encoder import UserEncoder
-from news_encoder import NewsEncoder
 from trainer import train
 import optuna
 from functools import partial
@@ -9,6 +7,7 @@ import copy
 from mtrec_class import Mtrec
 import torch
 import time
+import yaml
 
 
 def test_config(trial, cfg_, device):
@@ -63,7 +62,7 @@ def main():
     parser.add_argument('--file', default='test_hypertune', help='Path to the configuration file')
     args = parser.parse_args()
     cfg = load_configuration(args.file)
-    
+
     if cfg["wandb"]["use_wandb"]:    
         import wandb
         wandb.init(project="mtrec", name="hypertuning", config=cfg )
@@ -77,6 +76,9 @@ def main():
     print("best parameters:\n", study.best_params)
     wandb.log({"best params": study.best_params})
     wandb.finish()
+
+    with open('configs/best_params.yml', 'w') as file:
+        yaml.dump(study.best_params, file, default_flow_style=False)
 
 if __name__ == "__main__":
     main()
