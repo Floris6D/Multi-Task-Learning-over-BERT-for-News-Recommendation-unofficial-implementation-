@@ -37,3 +37,5 @@ lora_config:
     - "value"  # Targeted modules in BERT
   lora_dropout: 0.1  # Dropout rate
   bias: "none"  # Bias type 
+
+wandb: True

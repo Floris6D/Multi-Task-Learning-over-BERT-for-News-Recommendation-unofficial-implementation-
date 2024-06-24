@@ -48,3 +48,5 @@ hypertuning:
   lr:
     min: 1e-06
     max: 5e-03
+
+wandb: True

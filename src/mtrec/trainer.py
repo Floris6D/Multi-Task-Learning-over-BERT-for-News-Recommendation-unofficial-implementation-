@@ -172,7 +172,7 @@ def plot_loss(loss_train, loss_val, title:str = "Loss", save_dir:str = "default_
     plt.savefig(f"{save_dir}/{title}.png") 
     
 def train(model, dataloader_train, dataloader_val, cfg, 
-          print_flag = True, save_dir:str = "saved_models"):
+          print_flag = True, save_dir:str = "saved_models", use_wandb:bool = False):
     """
     Function to train the model on the given dataset.
     
@@ -186,7 +186,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
         dataloader_val (torch.utils.data.DataLoader): The dataloader for the validation dataset.
         device (torch.device): The device to be used for training.
     """
-
+    if use_wandb: import wandb
     #initialize optimizer
     user_encoder = model.user_encoder
     news_encoder = model.news_encoder
@@ -261,6 +261,10 @@ def train(model, dataloader_train, dataloader_val, cfg,
             #validation
             total_loss_val, total_main_loss_val = model.validate(dataloader_val, print_flag)
             validation_losses.append(total_main_loss_val)
+
+            if use_wandb:
+                wandb.log({"Training Main Loss": total_main_loss, "Training Total Loss": total_loss,
+                        "Validation Main Loss": total_main_loss_val, "Validation Total Loss": total_loss_val})
             #saving best models
             if total_loss_val < best_loss:   
                 best_loss = total_loss_val
@@ -270,6 +274,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
                 best_model = copy.deepcopy(model)
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best model so far.")
+    if use_wandb: wandb.finish()
     plot_loss(training_losses, validation_losses, save_dir = save_path)
     return best_model, best_loss
 

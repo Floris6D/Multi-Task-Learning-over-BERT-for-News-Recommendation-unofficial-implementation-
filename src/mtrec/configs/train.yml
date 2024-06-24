@@ -30,3 +30,5 @@ dataset:
 model:
   hidden: 768
   pretrained_model_name: bert-base-multilingual-uncased
+
+wandb: True
