@@ -27,7 +27,7 @@ def main():
     model, best_validation_loss =       train(model     = Mtrec_model, 
                                        dataloader_train = dataloader_train, 
                                        dataloader_val   = dataloader_val, 
-                                       cfg              = cfg["trainer"]
+                                       cfg              = cfg["trainer"],
                                        use_wandb        = cfg["wandb"])
     
     #TODO: JE: Make submission file
