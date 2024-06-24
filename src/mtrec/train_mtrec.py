@@ -14,6 +14,8 @@ def main():
     args = parser.parse_args()
     cfg = load_configuration(args.file)
     device =  "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Device: {device}")
+    print(f"Configuration: {cfg}")
     if cfg["wandb"]:
         import wandb
         wandb.init(project="MTRec", config=cfg)

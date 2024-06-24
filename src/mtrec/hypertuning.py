@@ -11,9 +11,9 @@ import yaml
 from utils import timer
 
 @timer
-def test_config(trial, cfg_, device):
+def test_config(trial, cfg_base, device):
     start = time.time()
-    cfg = copy.deepcopy(cfg_)
+    cfg = copy.deepcopy(cfg_base)
     hcf = cfg["hypertuning"]
     hidden_sizes = hcf["hidden_size"]
     nl_min, nl_max = hcf["num_layers"]["min"],hcf["num_layers"]["max"]
@@ -69,7 +69,7 @@ def main():
         wandb.init(project="mtrec", name="hypertuning", config=cfg )
    
     device =  "cuda" if torch.cuda.is_available() else "cpu"
-    target_func = partial(test_config, cfg = cfg, device=device)
+    target_func = partial(test_config, cfg_base = cfg, device=device)
 
     study = optuna.create_study(direction = "maximize")
     study.optimize(target_func, n_trials=100)
