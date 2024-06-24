@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+#SBATCH --job-name=train_mtrec
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=18
+#SBATCH --time=00:10:00
+#SBATCH --output=./results/slurm_logs/slurm_output_train_mtrec_%A.out
+
+
+cd $HOME/RecSys/
+
+# Source the .bashrc to initialize conda for the current session
+source $HOME/.bashrc
+
+# Activate env
+conda activate recsysenv
+
+# Run python
+python3 src/mtrec/train_mtrec.py --file test_fast_big
