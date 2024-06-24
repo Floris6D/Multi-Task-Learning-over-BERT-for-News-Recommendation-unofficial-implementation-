@@ -15,6 +15,7 @@ class UserEncoder(torch.nn.Module):
     
     def calc_att(self, R):
         tanhWR = tanh(torch.einsum("ij,bjk->bik", self.W, R.transpose(1, 2)))
+        print(tanhWR.device, self.q.device)
         return softmax(torch.sum(self.q * tanhWR, axis = 1).squeeze(), dim = 1)
     
     
