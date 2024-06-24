@@ -41,7 +41,7 @@ lora_config:
   bias: "none"  # Bias type 
 
 hypertuning:
-  hidden_size: [128, 256, 512]
+  hidden_size: [128, 256, 512, 1024, 2048]
   num_layers:
     min: 1
     max: 5

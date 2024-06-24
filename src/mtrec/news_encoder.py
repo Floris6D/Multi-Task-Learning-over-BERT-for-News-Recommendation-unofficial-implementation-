@@ -121,7 +121,7 @@ class NewsEncoder(torch.nn.Module):
         bert_mask = mask[subset_idx]
         
         x = self.bert(tokens, bert_mask)
-        print(x.device)
+        print(f"x device: {x.get_device()}") 
         last_hidden_state = x.last_hidden_state
         news_embeddings = last_hidden_state[:, 0 , :] #CLS token at index 0
         

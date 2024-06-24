@@ -17,7 +17,7 @@ trainer:
   lr_user: 0.001
   lr_news: 0.001
   lr_bert: 0.0001
-  batch_size: 2048
+  batch_size: 4096
   skip_ner: False
   skip_cat: False
   skip_gs: False

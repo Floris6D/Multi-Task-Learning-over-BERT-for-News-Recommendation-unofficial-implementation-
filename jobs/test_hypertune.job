@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=18
 #SBATCH --time=00:10:00
-#SBATCH --output=./results/slurm_logs/slurm_output_train_mtrec_%A.out
+#SBATCH --output=./results/slurm_logs/slurm_test_hyperturne_%A.out
 
 
 cd $HOME/RecSys/
