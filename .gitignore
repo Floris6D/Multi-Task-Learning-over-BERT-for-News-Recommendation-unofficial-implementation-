@@ -10,6 +10,9 @@ src/mtrec/saved_models
 # Weights and biases
 wandb/
 
+# Slurm files
+*.out
+
 # Saved models
 saved_models/
 
