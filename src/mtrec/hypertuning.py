@@ -11,9 +11,9 @@ import torch
 import time
 
 
-def test_config(trial, cfg, device):
+def test_config(trial, cfg_, device):
     start = time.time()
-    cfg = copy.deepcopy(cfg)
+    cfg = copy.deepcopy(cfg_)
     hcf = cfg["hypertuning"]
     hidden_sizes = hcf["hidden_size"]
     nl_min, nl_max = hcf["num_layers"]["min"],hcf["num_layers"]["max"]
@@ -36,19 +36,24 @@ def test_config(trial, cfg, device):
     cfg["trainer"]["lr_bert"] = trial.suggest_float("lr_bert", lr_min, lr_max, log=True)
     
     cfg["trainer"]["optimizer"] = trial.suggest_categorical("optimizer", optimizers)
-    Mtrec_model = Mtrec(cfg, device=device)
     
+    Mtrec_model = Mtrec(cfg, device=device)
     dataloaders = get_dataloaders(cfg)
+    
     try:    
         (dataloader_train, dataloader_val) = (dataloaders[0], dataloaders[1])
-        model, best_validation_loss =       train(model     = Mtrec_model, 
-                                        dataloader_train = dataloader_train, 
-                                        dataloader_val   = dataloader_val, 
-                                        cfg              = cfg["trainer"], 
-                                        device           = device)
+        model, best_validation_loss =       train(model      = Mtrec_model, 
+                                            dataloader_train = dataloader_train, 
+                                            dataloader_val   = dataloader_val, 
+                                            cfg              = cfg["trainer"], 
+                                            device           = device, 
+                                            use_wandb        = cfg["wandb"],
+                                            hypertuning      = True)
+    
     except Exception as e:
         print(f"EXCEPTION AS : {e}")
         best_validation_loss = 1000
+    
     finally:
         print(f"Time taken for trial: {time.time()-start}")
         return best_validation_loss
@@ -58,14 +63,20 @@ def main():
     parser.add_argument('--file', default='test_hypertune', help='Path to the configuration file')
     args = parser.parse_args()
     cfg = load_configuration(args.file)
+    
+    if cfg["wandb"]["use_wandb"]:    
+        import wandb
+        wandb.init(project="mtrec", name="hypertuning", config=cfg )
    
     device =  "cuda" if torch.cuda.is_available() else "cpu"
     target_func = partial(test_config, cfg = cfg, device=device)
 
-    study = optuna.create_study(direction = "minimize")
+    study = optuna.create_study(direction = "maximize")
     study.optimize(target_func, n_trials=100)
 
     print("best parameters:\n", study.best_params)
+    wandb.log({"best params": study.best_params})
+    wandb.finish()
 
 if __name__ == "__main__":
     main()
