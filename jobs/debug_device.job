@@ -8,19 +8,13 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=./results/slurm_logs/slurm_debug_device_%A.out
 
-
-
-# Print the hostname and the GPU info
-hostname
-nvidia-smi
-
 cd $HOME/RecSys/
 
 # Source the .bashrc to initialize conda for the current session
 source $HOME/.bashrc
 
 # Activate env
-conda activate recsysenv
+conda activate mtrec
 
 # Verify the conda environment and PyTorch installation
 python3 -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.device_count()); print(torch.cuda.current_device()); print(torch.cuda.get_device_name(torch.cuda.current_device()))"
