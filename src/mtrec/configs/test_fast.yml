@@ -10,6 +10,7 @@ news_encoder:
 
 user_encoder:
   hidden_size: 128
+
 trainer:
   optimizer: adamw
   epochs: 2
@@ -17,6 +18,9 @@ trainer:
   lr_news: 0.001
   lr_bert: 0.0001
   batch_size: 2
+  skip_ner: False
+  skip_cat: False
+  skip_gs: False
 
 dataset:
   data_dir: data_demo

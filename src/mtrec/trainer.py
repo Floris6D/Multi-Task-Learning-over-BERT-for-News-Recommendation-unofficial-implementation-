@@ -224,7 +224,8 @@ def train(model, dataloader_train, dataloader_val, cfg,
         for param in param_group['params']:
             param.requires_grad=True
 
-    optimizer = PCGrad(optimizer) #TODO: PCGrad
+    if not cfg["skip_gs"]: 
+        optimizer = PCGrad(optimizer) #TODO: PCGrad
     
     #initialize to track best
     best_loss = float('inf')
@@ -252,11 +253,11 @@ def train(model, dataloader_train, dataloader_val, cfg,
             if print_flag: print(f"Epoch {epoch} / {cfg['epochs']}")
             
             # Training
-            total_loss, total_main_loss = model.train(dataloader_train, optimizer, print_flag)
+            total_loss, total_main_loss = model.train(dataloader_train, optimizer, print_flag, cfg)
             training_losses.append(total_main_loss)
 
             # Validation
-            total_loss_val, total_main_loss_val = model.validate(dataloader_val, print_flag)
+            total_loss_val, total_main_loss_val = model.validate(dataloader_val, print_flag, cfg)
             validation_losses.append(total_main_loss_val)
             
             # Log the losses to wandb
