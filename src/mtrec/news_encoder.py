@@ -121,9 +121,9 @@ class NewsEncoder(torch.nn.Module):
         bert_mask = mask[subset_idx]
         
         x = self.bert(tokens, bert_mask)
-        print(f"x device: {x.get_device()}") 
         last_hidden_state = x.last_hidden_state
         news_embeddings = last_hidden_state[:, 0 , :] #CLS token at index 0
+        print(f"news_embeddings device: {news_embeddings.get_device()}")
         
         # Restructure the news embeddings in the original shape and using the reversed subset_idx if subset_idx was false, news embeddings will be zero
         final_news_embeddings = torch.zeros(bs*n, news_embeddings.shape[1])
