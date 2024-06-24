@@ -8,10 +8,15 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=./results/slurm_logs/slurm_debug_device_%A.out
 
+
+module purge
+module load 2022
+module load Anaconda3/2022.05
+
 cd $HOME/RecSys/
 
-# Source the .bashrc to initialize conda for the current session
-source $HOME/.bashrc
+# # Source the .bashrc to initialize conda for the current session
+# source $HOME/.bashrc
 
 # Activate env
 conda activate mtrec
