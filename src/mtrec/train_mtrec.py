@@ -16,7 +16,7 @@ def main():
     device =  "cuda" if torch.cuda.is_available() else "cpu"
     if cfg["wandb"]:
         import wandb
-        wandb.init(project="mtrec", config=cfg)
+        wandb.init(project="MTRec", config=cfg)
     
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
     (dataloader_train, dataloader_val)= get_dataloaders(cfg)
