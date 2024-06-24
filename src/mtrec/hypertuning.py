@@ -63,7 +63,7 @@ def main():
     args = parser.parse_args()
     cfg = load_configuration(args.file)
 
-    if cfg["wandb"]["use_wandb"]:    
+    if cfg["wandb"]:    
         import wandb
         wandb.init(project="mtrec", name="hypertuning", config=cfg )
    
