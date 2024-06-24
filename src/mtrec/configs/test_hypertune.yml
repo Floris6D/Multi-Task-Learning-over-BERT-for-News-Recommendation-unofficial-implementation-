@@ -13,7 +13,7 @@ user_encoder:
 
 trainer:
   optimizer: adam
-  epochs: 1
+  epochs: 10
   lr_user: 0 #Tuned
   lr_news: 0 #Tuned
   lr_bert: 0 #Tuned
@@ -48,5 +48,6 @@ hypertuning:
   lr:
     min: 1e-06
     max: 5e-03
+  optimizer: [adam, adamw, sgd]
 
 wandb: True
