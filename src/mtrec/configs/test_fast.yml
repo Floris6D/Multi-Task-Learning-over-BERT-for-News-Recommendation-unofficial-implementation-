@@ -11,8 +11,8 @@ news_encoder:
 user_encoder:
   hidden_size: 128
 trainer:
-  optimizer: adam
-  epochs: 40
+  optimizer: adamw
+  epochs: 2
   lr_user: 0.001
   lr_news: 0.001
   lr_bert: 0.0001
