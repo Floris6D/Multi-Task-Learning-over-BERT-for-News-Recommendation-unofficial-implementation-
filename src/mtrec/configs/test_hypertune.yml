@@ -25,6 +25,7 @@ dataset:
   max_title_length: 20
   npratio: 4
   dataset_fraction: 0.01
+  extended_NER: False
 
 model:
   hidden: 768
