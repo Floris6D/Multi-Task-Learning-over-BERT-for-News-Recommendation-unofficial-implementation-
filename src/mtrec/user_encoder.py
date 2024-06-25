@@ -17,7 +17,7 @@ class UserEncoder(torch.nn.Module):
     def calc_att(self, R):
         # Get all empty news embeddings
         M = torch.all(R==0, dim =2).int()
-        M *= float('-inf')
+        M  = M.where(M == 1, torch.tensor(-1e9)).to(self.device)
         tanhWR = tanh(torch.einsum("ij,bjk->bik", self.W, R.transpose(1, 2)))
         unnormalized_att = torch.sum(self.q * tanhWR, axis = 1).squeeze() + M #batch_size * h
         return softmax(unnormalized_att, dim = 1)
