@@ -296,12 +296,17 @@ class EB_NeRDDataset(Dataset):
         # Now for each article and the create a list with the NER tags
         NER_labels = []
         for i in range(len(self.df_articles)): # Loop over all the articles
-            row_entity = [self.entity_mapping['O']] * len(re.split(r'[ -]+', self.df_articles['title'][i])) # Create a list with the same length as the title (0 is None)
+            article_title = self.df_articles['title'][i]
+            tokenized_title = self.tokenizer.tokenize(article_title)
+            row_entity = [self.entity_mapping['O']] * len(tokenized_title) # Create a list with the same length as the title (0 is None)
             for ner_cluster, entity_group in zip(self.df_articles['ner_clusters'][i], self.df_articles['entity_groups'][i]): # Loop over all the NER clusters
+                # Tokenize the ner_cluster
+                tokenized_ner_cluster = self.tokenizer.tokenize(ner_cluster)
+                
                 # Now find the position of the ner_cluster in the title
-                idx = find_named_entity_position(re.split(r'[ -]+', self.df_articles['title'][i]), re.split(r'[ -]+', ner_cluster))
+                idx = find_named_entity_position(tokenized_title, tokenized_ner_cluster)
                 if idx != -1:
-                    for j in range(len(re.split(r'[ -]+', ner_cluster))):
+                    for j in range(len(tokenized_ner_cluster)):
                         if j == 0:
                             row_entity[idx + j] = self.entity_mapping['B-P']
                         else:
