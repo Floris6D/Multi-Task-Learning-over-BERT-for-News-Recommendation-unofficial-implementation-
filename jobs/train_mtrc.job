@@ -5,9 +5,16 @@
 #SBATCH --job-name=train_mtrec
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=18
-#SBATCH --time=12:00:00
-#SBATCH --output=./results/slurm_logs/slurm_output_train_mtrec_%A.out
-
+#SBATCH --time=08:00:00
+#SBATCH --output=./results/slurm_logs/slurm_train_mtrec_%A.out
 
 cd $HOME/RecSys/
-python3 train_mtrec.py --file train
+
+# Source the .bashrc to initialize conda for the current session
+source $HOME/.bashrc
+
+# Activate env
+conda activate recsysenv
+
+# Run python
+python3 src/mtrec/train_mtrec.py --file best_config

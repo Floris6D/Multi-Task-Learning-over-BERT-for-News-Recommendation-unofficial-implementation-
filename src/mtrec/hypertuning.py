@@ -80,7 +80,7 @@ def main():
     wandb.log({"best params": study.best_params})
     wandb.finish()
 
-    with open('configs/best_params.yml', 'w') as file:
+    with open('configs/best_config.yml', 'w') as file:
         yaml.dump(study.best_params, file, default_flow_style=False)
 
 if __name__ == "__main__":
