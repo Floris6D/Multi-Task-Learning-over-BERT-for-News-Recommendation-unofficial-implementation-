@@ -153,23 +153,10 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     predictions = predictions[mask]
     # Calculate loss
     return nn.CrossEntropyLoss()(predictions, labels)
-
-
-def plot_loss(loss_train, loss_val, title:str = "Loss", save_dir:str = "default_savedir", xlabel:str = "Epoch", ylabel:str = "Loss"):
-    X = np.arange(1, len(loss_train)+1)
-    plt.plot(X, loss_train, label = "Training Loss")
-    X = np.arange(1, len(loss_val)+1)
-    plt.plot(X, loss_val, label = "Validation Loss")
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f"{save_dir}/{title}.png") 
     
 def train(model, dataloader_train, dataloader_val, cfg, 
           print_flag = True, save_dir:str = "saved_models", use_wandb:bool = False, 
-          hypertuning:bool = False):
+          hypertuning:bool = False, name_run:str = "unnamed"):
     """
     Function to train the model on the given dataset.
     
@@ -239,14 +226,13 @@ def train(model, dataloader_train, dataloader_val, cfg,
     while os.path.exists(os.path.join(save_dir, f'run{save_num}')):
         save_num += 1
 
-    save_path = os.path.join(save_dir, f'run{save_num}')
+    save_path = os.path.join(save_dir, f'{name_run}_run{save_num}')
     os.makedirs(save_path, exist_ok=True)
 
     # Debugging: Confirm directory creation
     if not os.path.exists(save_path):
         raise RuntimeError(f"Failed to create directory: {save_path}")
-    
-    training_losses, validation_losses = [], []
+
     if print_flag: print(f"Saving models to {save_path}")
     try: #training can be interrupted by catching KeyboardInterrupt
         for epoch in range(cfg['epochs']):
