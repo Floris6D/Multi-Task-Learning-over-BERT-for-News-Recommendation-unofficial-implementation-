@@ -6,7 +6,6 @@ from utils import load_configuration, get_dataloaders
 import copy
 from mtrec_class import Mtrec
 import torch
-import time
 import yaml
 from utils import timer
 
