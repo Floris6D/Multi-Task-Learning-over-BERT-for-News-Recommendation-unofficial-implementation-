@@ -5,7 +5,7 @@ import torch
 from utils import load_configuration, get_dataloaders
 
 def main():
-    # Parse the arguments
+    # Initialize the setup
     parser = argparse.ArgumentParser(description='Process some arguments.')
     parser.add_argument('--file', default='test', help='Path to the configuration file')
     args = parser.parse_args()
@@ -15,14 +15,20 @@ def main():
     print(f"Configuration: {cfg}")
     if cfg["wandb"]:
         import wandb
-        wandb.init(project="MTRec", config=cfg)
+        try:
+            wandb.init(project="MTRec", config=cfg)
+        except Exception as e:
+            print(f"Could not initialize wandb: {e}")
+            print(f"First log in via 'wandb login' in terminal")
+            return
     
-    # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
+    # Get the dataloaders
     (dataloader_train, dataloader_val) = get_dataloaders(cfg)
     
     # Get the model
     Mtrec_model = Mtrec(cfg, device=device).to(device)
 
+    #Train and save the model
     model, best_validation_loss =       train(model     = Mtrec_model, 
                                        dataloader_train = dataloader_train, 
                                        dataloader_val   = dataloader_val, 
