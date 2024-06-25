@@ -12,13 +12,12 @@ def cross_product(user_embedding, news_embedding):
     Returns:
         torch.Tensor: Batch_size * N tensor of scores.
     """
+    device = user_embedding.device
     bsu, emb_dimu = user_embedding.shape
     bsn, N, emb_dimn = news_embedding.shape
     assert bsu == bsn , "Batch sizes of user and news embeddings do not match"
     assert emb_dimu == emb_dimn, "Embedding dimensions of user and news embeddings do not match"
-    # assert user_embedding.requires_grad, "User embedding requires grad"
-    # assert news_embedding.requires_grad, "News embedding requires grad"
-    scores = torch.einsum("bk,bik->bi",user_embedding, news_embedding)
+    scores = torch.einsum("bk,bik->bi",user_embedding, news_embedding).to(device)
     return scores
 
 
@@ -40,7 +39,8 @@ def cosine_sim(user_embedding, news_embedding):
     Returns:
         torch.Tensor: Batch_size * N tensor of scores.
     """
-    scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2)
+    device = user_embedding.device
+    scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2).to(device)
     return scores
 
 
@@ -49,8 +49,9 @@ def get2device(data, device):
     return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device)), impression_id.to(device)
 
 
-def main_loss(scores, labels, normalization = True):
-    #assert scores.requires_grad, "Scores should require grad"
+def main_loss(scores, labels, normalization = False):
+
+    device = scores.device
     if normalization: # normalization? TODO
         scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
         scores = torch.exp(scores)  # apply exponential function
@@ -70,19 +71,18 @@ def category_loss(p1, p2, l1, l2):
     l1 is label 1 related to the inview articles
     l2 is label 2 related to the history articles (this contains nans for padding)
     """
+    device =  p1.device
     bs, N1, num_cat = p1.shape
     bs, N2, num_cat = p2.shape
     p1 = p1.reshape(bs*N1, num_cat)
     p2 = p2.reshape(bs*N2, num_cat)
-    # l1 = torch.argmax(l1, dim=2) # go from one-hot to index OLD WAY
-    # l2 = torch.argmax(l2, dim=2) # go from one-hot to index
     l1 = l1.reshape(bs*N1)
     l2 = l2.reshape(bs*N2)
     predictions = torch.cat([p1, p2], dim = 0)
     labels = torch.cat([l1, l2], dim = 0)
     
     # Filter out the rows which only contain nans in the predictions
-    mask = ~torch.isnan(predictions).any(dim=1)
+    mask = ~torch.isnan(predictions).any(dim=1).to(device)
     predictions = predictions[mask]
     labels = labels[mask]
     
@@ -94,6 +94,7 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     First we untangle all the NER predictions and labels
     Then apply cross entropy loss
     """
+    device = p1.device
     # Get shapes
     bs, N1, tl1, num_ner = p1.shape
     bs, N2, tl2, num_ner = p2.shape
@@ -106,9 +107,9 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     mask2   = mask2.reshape(bs*N2*tl2)
     mask = torch.cat([mask1, mask2], dim = 0)
     # Reshape labels (insert a -1 for the cls token and remove last row of demension 2)
-    l1 = torch.cat([torch.zeros(bs, N1, 1).long(), l1], dim = 2)
+    l1 = torch.cat([torch.zeros(bs, N1, 1).long().to(device), l1], dim = 2)
     l1 = l1[:,:,:tl1].reshape(bs*N1*tl1)
-    l2 = torch.cat([torch.zeros(bs, N2, 1).long(), l2], dim = 2)
+    l2 = torch.cat([torch.zeros(bs, N2, 1).long().to(device), l2], dim = 2)
     l2 = l2[:,:,:tl2].reshape(bs*N2*tl2)
     labels = torch.cat([l1, l2], dim = 0).long()
     # Apply mask
