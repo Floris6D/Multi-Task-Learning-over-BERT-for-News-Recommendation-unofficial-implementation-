@@ -1,4 +1,4 @@
-name_run: Everything
+name_run: Extenden_NER
 news_encoder:
   cfg_cat:
     num_layers: 1 #TODO: Change hyperparameters
@@ -30,7 +30,7 @@ dataset:
   max_title_length: 20
   npratio: 4
   dataset_fraction: 0.02
-  extended_NER: False
+  extended_NER: True
 
 model:
   hidden: 768
