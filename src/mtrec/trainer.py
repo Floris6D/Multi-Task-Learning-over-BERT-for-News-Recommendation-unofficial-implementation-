@@ -253,22 +253,24 @@ def train(model, dataloader_train, dataloader_val, cfg,
             if print_flag: print(f"Epoch {epoch} / {cfg['epochs']}")
             
             # Training
-            total_loss, total_main_loss = model.train(dataloader_train, optimizer, print_flag, cfg)
-            training_losses.append(total_main_loss)
+            train_loss, train_main_loss, train_cat_loss, train_ner_loss = model.train(dataloader_train, optimizer, print_flag, cfg)
 
             # Validation
-            total_loss_val, total_main_loss_val = model.validate(dataloader_val, print_flag, cfg)
-            validation_losses.append(total_main_loss_val)
+            val_loss, val_main_loss, val_cat_loss, val_ner_loss = model.validate(dataloader_val, print_flag, cfg)
+
             
             # Log the losses to wandb
             if use_wandb and not hypertuning:
-                wandb.log({"Training Main Loss": total_main_loss, "Training Total Loss": total_loss,
-                        "Validation Main Loss": total_main_loss_val, "Validation Total Loss": total_loss_val})
+                wandb.log({"Training Main Loss": train_main_loss, "Training Total Loss": train_loss,
+                           "Training Cat Loss": train_cat_loss, "Training NER Loss": train_ner_loss,
+                            "Validation Main Loss": val_main_loss, "Validation Total Loss": val_loss,
+                            "Validation Cat Loss": val_cat_loss, "Validation NER Loss": val_ner_loss})
+                        
             elif use_wandb and hypertuning:
-                wandb.log({"Validation Main Loss": total_main_loss_val})
+                wandb.log({"Validation Main Loss": val_main_loss, "Validation Total Loss": val_loss})
             #saving best models
-            if total_loss_val < best_loss:   
-                best_loss = total_loss_val
+            if val_loss < best_loss:   
+                best_loss = val_loss
                 if print_flag:           
                     print(f"Saving model @{epoch}")
                 model.save_model(save_path)
@@ -276,7 +278,6 @@ def train(model, dataloader_train, dataloader_val, cfg,
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best model so far.")
     if use_wandb and not hypertuning: wandb.finish()
-    plot_loss(training_losses, validation_losses, save_dir = save_path)
     return best_model, best_loss
 
 # # Calculate the metrics #TODO look at dimensions of scores and labels
