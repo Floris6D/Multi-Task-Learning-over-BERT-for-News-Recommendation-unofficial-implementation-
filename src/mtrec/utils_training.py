@@ -49,21 +49,26 @@ def get2device(data, device):
     return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device)), impression_id.to(device)
 
 
-def main_loss(scores, labels, normalization = False):
+def main_loss(scores, labels, normalization = True):
     if torch.isnan(scores).any(): 
         print('Nans in scores')
     if torch.isnan(labels).any():
         print('Nans in labels')
-    if normalization: # normalization? TODO
+    if normalization: 
         scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
         scores = torch.exp(scores)  # apply exponential function
         sum_exp = torch.sum(scores, dim=1, keepdim=True)  # calculate the sum of exponential scores
         scores = scores / sum_exp  # normalize the scores to sum to 1
     sum_exp = torch.sum(torch.exp(scores), dim = 1)
     pos_scores = torch.sum(scores * labels, axis = 1)
+    output = -torch.log(torch.exp(pos_scores)/sum_exp).mean() 
     print(f"pos contains nan: {torch.isnan(pos_scores).any()}")
     print(f"sum_exp contains nan: {torch.isnan(sum_exp).any()}")
-    return -torch.log(torch.exp(pos_scores)/sum_exp).mean() 
+    print(f"output contains nan: {torch.isnan(output).any()}")
+    print(f"sum_exp: {sum_exp}")
+    print(f"pos_scores: {pos_scores}")
+    print(f"output: {output}")
+    return output
 
 
 def category_loss(p1, p2, l1, l2):
