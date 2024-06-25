@@ -16,14 +16,16 @@ class UserEncoder(torch.nn.Module):
     
     def calc_att(self, R):
         # Get all empty news embeddings
-        M = torch.all(R==0, dim =2).int()
-        M *= float('-inf')
+        M = torch.all(R==0, dim =2).int() #batch_size * hist
+        M_float = M.float()
+        M_float[M == 1] = float('-inf')
+
         tanhWR = tanh(torch.einsum("ij,bjk->bik", self.W, R.transpose(1, 2)))
-        unnormalized_att = torch.sum(self.q * tanhWR, axis = 1).squeeze() + M #batch_size * h
+        unnormalized_att = torch.sum(self.q * tanhWR, axis = 1).squeeze() + M_float #batch_size * h
         return softmax(unnormalized_att, dim = 1)
     
     
     def forward(self, R_h): #new iteration where we feed R_h directly from news encoder
-        att = self.calc_att(R_h) #batch_size * h * bert_embedding_size
+        att = self.calc_att(R_h) #batch_size * hist * bert_embedding_size
         user_embeddings = torch.einsum("bi,bik->bk", att, R_h) #batch_size * token_size
         return user_embeddings.squeeze()
