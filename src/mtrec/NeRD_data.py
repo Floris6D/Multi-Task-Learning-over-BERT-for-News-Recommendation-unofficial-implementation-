@@ -4,17 +4,14 @@ import polars as pl
 import json
 import re
 
-from ebrec.utils._polars import slice_join_dataframes, concat_str_columns, filter_maximum_lengths_from_list
+from ebrec.utils._polars import slice_join_dataframes
 from ebrec.utils._behaviors import (
     create_binary_labels_column,
     sampling_strategy_wu2019,
     truncate_history,
 )
 from ebrec.utils._articles_behaviors import map_list_article_id_to_value
-from ebrec.utils._python import (
-    repeat_by_list_values_from_matrix,
-    create_lookup_objects,
-)
+from ebrec.utils._python import create_lookup_objects
 from ebrec.utils._articles import create_article_id_to_value_mapping
 
 from torch.utils.data import Dataset
@@ -130,10 +127,6 @@ class EB_NeRDDataset(Dataset):
         # Load the article data
         df_articles = pl.read_parquet(os.path.join(self.data_dir, 'articles.parquet'))
         
-        # This concatenates the title with the subtitle in the DF, the cat_cal is the column name
-        #TODO: JE: Maybe also add subtitle for prediction
-        #df_articles, cat_cal = concat_str_columns(df = df_articles, columns=['subtitle', 'title'])
-        
         # This add the bert tokenization to the df
         df_articles, col_name_token_title, col_name_mask = convert_text2encoding_with_transformers_tokenizers(df_articles, self.tokenizer, column='title', max_length=self.max_title_length)
     
@@ -168,35 +161,8 @@ class EB_NeRDDataset(Dataset):
                 drop_nulls=False,
             ) 
             
-            # if self.eval_mode or not self.wu_sampling:
-            #     # n_samples in eval mode is the max number of articles in the inview list
-            #     repeats = np.array(self.X["n_samples"])
-            #     # =>
-            #     # Shape of y is (n_datapoints * n_samples, 1) #TODO: check if this is correct
-            #     self.y = np.array(self.y.explode().to_list()).reshape(-1, 1)
-            #     # =>
-            #     # Shape of his_input_title is (n_datapoints * n_samples, history_size, ..., max_title_length)
-            #     his_input_title = repeat_by_list_values_from_matrix(
-            #         self.X['article_id_fixed'].to_list(),
-            #         matrix=self.lookup_article_matrix,
-            #         repeats=repeats,
-            #     )
-            #     # =>
-            #     mask_his_input_title = repeat_by_list_values_from_matrix(
-            #         self.X['article_id_fixed'].to_list(),
-            #         matrix=self.lookup_article_matrix_mask,
-            #         repeats=repeats,
-            #     )
-            #     # =>
-            #     pred_input_title = self.lookup_article_matrix[
-            #         self.X['article_ids_inview'].explode().to_list()
-            #     ]
-            #     mask_pred_input_title = self.lookup_article_matrix_mask[
-            #         self.X['article_ids_inview'].explode().to_list()
-            #     ]
                                      
             self.y = np.array(self.y.to_list())
-            # self.c_y = np.array(self.c_y.to_list() ) 
                 
             his_input_title = self.lookup_article_matrix[
                 self.data['article_id_fixed'].to_list()
@@ -220,7 +186,6 @@ class EB_NeRDDataset(Dataset):
             # Also return the impression_id
             impression_ids = self.data['impression_id'].to_list()
             
-                        
             return (his_input_title, mask_his_input_title, pred_input_title, mask_pred_input_title), (self.y), impression_ids
     
     def create_category_labels(self): 
@@ -228,17 +193,7 @@ class EB_NeRDDataset(Dataset):
         This function loops over all the behaviors and is therefore not efficient but for simplicity I kept this
         '''      
 
-        # # Get unique categories and their corresponding indices
-        # unique_categories = self.df_articles['category_str'].unique().to_list()
-        # unique_categories = sorted(unique_categories)
-
-        # # Create a mapping dictionary for category to index
-        # self.category_mapping = {name: i for i, name in enumerate(unique_categories)}
-        
-        # with open(os.path.join('src/mtrec/configs', 'category_mapping.json'), 'w') as f:
-        #     json.dump(self.category_mapping, f)
-        
-        # Now load the category mapping (to prevent ordering changes)
+        # Load the category mapping (to prevent ordering changes)
         with open(os.path.join('src/mtrec/configs', 'category_mapping.json'), 'r') as f:
             self.category_mapping = json.load(f)
         
@@ -280,15 +235,7 @@ class EB_NeRDDataset(Dataset):
             return self.category_mapping[category_str]
         
         
-    def generate_ner_tag(self):
-        # entity_groups = ['O', 'B-P', 'I-P']
-        
-        # # Create a mapping dictionary for category to index
-        # self.entity_mapping = {name: i for i, name in enumerate(entity_groups)}
-        
-        # with open(os.path.join('src/mtrec/configs', 'entity_mapping.json'), 'w') as f:
-        #     json.dump(self.entity_mapping, f)
-        
+    def generate_ner_tag(self):        
         # Load the entity mapping (too make sure ordering doesn't change when loading the data again)
         with open(os.path.join('src/mtrec/configs', 'entity_mapping.json'), 'r') as f:
             self.entity_mapping = json.load(f)
@@ -366,27 +313,7 @@ class EB_NeRDDataset(Dataset):
         
         
         
-    def generate_extended_ner_tag(self): 
-        
-        # entity_groups = self.df_articles.explode('entity_groups')
-        # entity_groups = entity_groups['entity_groups'].unique().to_list()
-        # # Remove none in the list
-        # entity_groups = [x for x in entity_groups if x is not None]
-        
-        # # Sort the list in alphabetical order
-        # entity_groups = sorted(entity_groups) # Sort the list in alphabetical order
-        
-        # # Add a None to the beginning of the list
-        # entity_groups.insert(0, None)
-        
-        # self.n_entities = len(entity_groups)
-        
-        # # Create a mapping dictionary for category to index
-        # self.entity_mapping = {name: i for i, name in enumerate(entity_groups)}
-        
-        # with open(os.path.join('src/mtrec/configs', 'extended_entity_mapping.json'), 'w') as f:
-        #     json.dump(self.entity_mapping, f)
-        
+    def generate_extended_ner_tag(self):         
         # Open the entity mapping file to prevent ordering changes
         with open(os.path.join('src/mtrec/configs', 'extended_entity_mapping.json'), 'r') as f:
             self.entity_mapping = json.load(f)
@@ -458,62 +385,7 @@ class EB_NeRDDataset(Dataset):
         
         self.ner_y_his = np.array(labels)
         self.ner_y_his = self.ner_y_his.squeeze(axis = 2)
-        
-        
-        
-        # test1 = self.df_articles.select(pl.col('ner_clusters'))
-        # test2 = self.df_articles.select(pl.col('title'))
-        # article_ids = self.df_articles.select(pl.col('article_id'))         
-        # article_ner_dict = {}
-        # max = 28 #shape of the embedding        
-        # for article_id, elem, elem2 in zip(article_ids.to_series().to_list(), test2.to_series().to_list(), test1.to_series().to_list()):
-        #     vector = []
-        #     internal = False
-        #     elem2 =[word for entry in elem2 for word in entry.split()]
-        #     for i in elem.split():
-        #         if internal and i in elem2:
-                    
-        #             vector.append(2)
-        #         elif i in elem2:
-                    
-        #             # print(i) 
-        #             # print(elem2) 
-        #             # print(elem)               
-        #             vector.append(1)
-        #             internal = True
-                    
-        #         else:
-        #             vector.append(0)
-        #             internal = False              
-                
-        #     article_ner_dict[article_id] = vector
-
-        # labels = []
-        # for elem in self.df_behaviors['article_ids_inview']:
-        #     vectors = []
-        #     for id in elem:                
-        #         if id not in article_ner_dict.keys():                    
-        #             vectors.append([0] * max)
-        #         else:
-        #             vector = article_ner_dict[id]
-        #             vector.extend([0] * (max - len(vector)))    
-        #             vectors.append(vector)          
-        #     labels.append(vectors)
-        
-        # self.ner_y_inview = np.array(labels)
-        # labels = [] 
-        # for elem in self.df_behaviors['article_id_fixed']:
-        #     vectors = []            
-        #     for id in elem:                
-        #         if id not in article_ner_dict.keys():                    
-        #             vectors.append([0] * max)
-        #         else:
-        #             vector = article_ner_dict[id]
-        #             vector.extend([0] * (max - len(vector)))    
-        #             vectors.append(vector)                    
-        #     labels.append(vectors)    
-        
-        # self.ner_y_his = np.array(labels)       
+          
 
 def pad_list(lst, length):
     lst = lst.to_list()
@@ -521,42 +393,10 @@ def pad_list(lst, length):
   
     return lst      
 
-def convert_text2encoding_with_transformers_tokenizers(
-    df: pl.DataFrame,
-    tokenizer: AutoTokenizer,
-    column: str,
-    max_length: int = None,
-) -> pl.DataFrame:
-    """Converts text in a specified DataFrame column to tokens using a provided tokenizer.
-    Args:
-        df (pl.DataFrame): The input DataFrame containing the text column.
-        tokenizer (AutoTokenizer): The tokenizer to use for encoding the text. (from transformers import AutoTokenizer)
-        column (str): The name of the column containing the text.
-        max_length (int, optional): The maximum length of the encoded tokens. Defaults to None.
-    Returns:
-        pl.DataFrame: A new DataFrame with an additional column containing the encoded tokens.
-    Example:
-    >>> from transformers import AutoTokenizer
-    >>> import polars as pl
-    >>> df = pl.DataFrame({
-            'text': ['This is a test.', 'Another test string.', 'Yet another one.']
-        })
-    >>> tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-    >>> encoded_df, new_column = convert_text2encoding_with_transformers(df, tokenizer, 'text', max_length=20)
-    >>> print(encoded_df)
-        shape: (3, 2)
-        ┌──────────────────────┬───────────────────────────────┐
-        │ text                 ┆ text_encode_bert-base-uncased │
-        │ ---                  ┆ ---                           │
-        │ str                  ┆ list[i64]                     │
-        ╞══════════════════════╪═══════════════════════════════╡
-        │ This is a test.      ┆ [2023, 2003, … 0]             │
-        │ Another test string. ┆ [2178, 3231, … 0]             │
-        │ Yet another one.     ┆ [2664, 2178, … 0]             │
-        └──────────────────────┴───────────────────────────────┘
-    >>> print(new_column)
-        text_encode_bert-base-uncased
-    """
+
+#This function was taken from the ebrec.utils._articles.py file, but modified for our needs
+def convert_text2encoding_with_transformers_tokenizers( df: 
+                    pl.DataFrame, tokenizer: AutoTokenizer, column: str, max_length: int = None):
     text = df[column].to_list()
     # set columns
     new_column_id = f"{column}_encode_{tokenizer.name_or_path}"
@@ -576,21 +416,7 @@ def convert_text2encoding_with_transformers_tokenizers(
     df = df.with_columns(pl.Series(new_column_mask, token_masks))
     return df, new_column_id, new_column_mask
     
-
-    # def encode(self, batch):
-    #     batch = [tokenize(sent) for sent in batch]
-    #     token_item = self.tokenizer(batch, padding="max_length", truncation=True, max_length=self.max_length, add_special_tokens=True)
-    #     return token_item['input_ids'], token_item['attention_mask']
-
-    # def format_srt(self, str_input):
-    #     return str_input.replace('"', '')
-
-    # def normal_sample(self, input, length):
-    #     n_padding = len(input[-1])
-    #     n_extending = length - len(input)        
-    #     tokens = input + ([[0] * n_padding] * n_extending)
-    #     return tokens[:length]
-    
+   
     
 def find_named_entity_position(title_list, named_entity):
     len_title = len(title_list)
