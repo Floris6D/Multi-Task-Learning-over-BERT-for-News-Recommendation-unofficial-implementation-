@@ -28,7 +28,7 @@ def test_config(trial, cfg_base, device):
     cfg["news_encoder"]["cfg_ner"]["num_layers"] = trial.suggest_int("ner_num_layers", nl_min, nl_max)
     # User encoder
     cfg["user_encoder"]["hidden_size"] = trial.suggest_categorical("user_hidden_size", hidden_sizes)
-    #Training
+    # Training
     cfg["trainer"]["batch_size"] = trial.suggest_categorical("batch_size", batch_sizes)
     
     cfg["trainer"]["lr_user"] = trial.suggest_float("lr_user", lr_min, lr_max, log=True)
@@ -38,11 +38,10 @@ def test_config(trial, cfg_base, device):
     cfg["trainer"]["optimizer"] = trial.suggest_categorical("optimizer", optimizers)
     
     Mtrec_model = Mtrec(cfg, device=device)
-    dataloaders = get_dataloaders(cfg)
     
     try:    
-        (dataloader_train, dataloader_val) = (dataloaders[0], dataloaders[1])
-        model, best_validation_loss =       train(model      = Mtrec_model, 
+        (dataloader_train, dataloader_val) = get_dataloaders(cfg)
+        _, best_validation_loss =       train(model      = Mtrec_model, 
                                             dataloader_train = dataloader_train, 
                                             dataloader_val   = dataloader_val, 
                                             cfg              = cfg["trainer"], 
@@ -59,6 +58,26 @@ def test_config(trial, cfg_base, device):
     
     print(f"Time taken for trial: {time.time()-start}")
     return best_validation_loss
+
+
+def merge(best_params, cfg):
+    # Categorical net
+    cfg["news_encoder"]["cfg_cat"]["hidden_size"] = best_params["cat_hidden_size"]
+    cfg["news_encoder"]["cfg_cat"]["num_layers"] = best_params["cat_num_layers"]
+    # NER net
+    cfg["news_encoder"]["cfg_ner"]["hidden_size"] = best_params["ner_hidden_size"]
+    cfg["news_encoder"]["cfg_ner"]["num_layers"] = best_params["ner_num_layers"]
+    # User encoder
+    cfg["user_encoder"]["hidden_size"] = best_params["user_hidden_size"]
+    # Training
+    cfg["trainer"]["batch_size"] = best_params["batch_size"]
+    
+    cfg["trainer"]["lr_user"] = best_params["lr_user"]
+    cfg["trainer"]["lr_news"] = best_params["lr_news"]
+    cfg["trainer"]["lr_bert"] = best_params["lr_bert"]
+    
+    cfg["trainer"]["optimizer"] = best_params["optimizer"]
+    return cfg
 
 def main():
     parser = argparse.ArgumentParser(description='Process some arguments.')
@@ -79,9 +98,9 @@ def main():
     print("best parameters:\n", study.best_params)
     wandb.log({"best params": study.best_params})
     wandb.finish()
-
+    best_cfg = merge(study.best_params, cfg)
     with open('configs/best_config.yml', 'w') as file:
-        yaml.dump(study.best_params, file, default_flow_style=False)
+        yaml.dump(best_cfg, file, default_flow_style=False)
 
 if __name__ == "__main__":
     main()
