@@ -22,7 +22,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
         device (torch.device): The device to be used for training.
     """
     if use_wandb: import wandb
-    #initialize optimizer
+    # Initialize model
     user_encoder = model.user_encoder
     news_encoder = model.news_encoder
     params = [
@@ -33,7 +33,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
     ] 
 
     best_model = None
-
+    # Initialize optimizer
     if cfg["optimizer"] == "adam":
         optimizer = torch.optim.Adam(params)
     elif cfg["optimizer"] == "sgd":
@@ -53,7 +53,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
     # Add gradient surgery
     if not cfg["skip_gs"]: 
         optimizer = PCGrad(optimizer, lamb = cfg["aux_scaler"])
-        
+
     # Initialize to track best
     best_loss = float('inf')
     save_num = 0
