@@ -73,7 +73,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
         save_dir += '/'
 
     # Determine a unique save directory
-    while os.path.exists(os.path.join(save_dir, f'run{save_num}')):
+    while os.path.exists(os.path.join(save_dir, f'{name_run}_run{save_num}')):
         save_num += 1
 
     save_path = os.path.join(save_dir, f'{name_run}_run{save_num}')
