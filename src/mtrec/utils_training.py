@@ -45,22 +45,43 @@ def cosine_sim(user_embedding, news_embedding):
 
 
 def get2device(data, device):
+    '''
+    Move the input data tensors to the specified device.
+
+    Args:
+        data (tuple): A tuple containing input data tensors.
+        device (torch.device): The target device to move the tensors to.
+
+    Returns:
+        tuple: A tuple containing the input data tensors moved to the specified device.
+    '''
     (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview), impression_id = data
     return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device)), impression_id.to(device)
 
 
-def main_loss(scores, labels, normalization = True):
+def main_loss(scores, labels, normalization=True):
+    """
+    Calculate the main loss for a given set of scores and labels.
+
+    Args:
+        scores (torch.Tensor): (batch_size * num_inview) The predicted scores.
+        labels (torch.Tensor): (batch_size * num_inview) The ground truth labels.
+        normalization (bool, optional): Whether to normalize the scores. Defaults to True.
+
+    Returns:
+        torch.Tensor: The calculated main loss.
+    """
     if torch.isnan(scores).any(): 
         print('Nans in scores')
     if torch.isnan(labels).any():
         print('Nans in labels')
     if normalization: 
-        scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
+        scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  #TODO why  [0]? 
         scores = torch.exp(scores)  # apply exponential function
         sum_exp = torch.sum(scores, dim=1, keepdim=True)  # calculate the sum of exponential scores
         scores = scores / sum_exp  # normalize the scores to sum to 1
-    sum_exp = torch.sum(torch.exp(scores), dim = 1)
-    pos_scores = torch.sum(scores * labels, axis = 1)
+    sum_exp = torch.sum(torch.exp(scores), dim=1)
+    pos_scores = torch.sum(scores * labels, axis=1)
     output = -torch.log(torch.exp(pos_scores)/sum_exp).mean() 
     print(f"pos contains nan: {torch.isnan(pos_scores).any()}")
     print(f"sum_exp contains nan: {torch.isnan(sum_exp).any()}")

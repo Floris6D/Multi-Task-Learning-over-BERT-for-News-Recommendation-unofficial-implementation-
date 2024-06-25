@@ -36,6 +36,7 @@ class Mtrec(torch.nn.Module):
             # MAIN task: Click prediction
             scores = scoring_function(user_embeddings, inview_news_embeddings)
             main_loss = criterion(scores, labels)
+            print(f"main loss in mtrec class")
             losses = [main_loss] # List of losses to backpropagate for PCGrad
             total_loss += main_loss.item() 
             total_main_loss += main_loss.item()
