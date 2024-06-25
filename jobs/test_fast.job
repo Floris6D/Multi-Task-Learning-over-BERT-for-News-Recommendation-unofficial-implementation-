@@ -15,7 +15,7 @@ cd $HOME/RecSys/
 source $HOME/.bashrc
 
 # Activate env
-conda activate recsysenv
+conda activate recsys_JE
 
 # Run python
 python3 src/mtrec/train_mtrec.py --file test_fast
