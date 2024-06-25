@@ -74,10 +74,10 @@ def train(model, dataloader_train, dataloader_val, cfg,
             
             # Training
             train_loss, train_main_loss, train_cat_loss, train_ner_loss = model.train(dataloader_train, optimizer, print_flag, cfg)
-
+            print(f"train_loss: {train_loss}, train_main_loss: {train_main_loss}, train_cat_loss: {train_cat_loss}, train_ner_loss: {train_ner_loss}")
             # Validation
             val_loss, val_main_loss, val_cat_loss, val_ner_loss = model.validate(dataloader_val, print_flag, cfg)
-
+            print(f"val_loss: {val_loss}, val_main_loss: {val_main_loss}, val_cat_loss: {val_cat_loss}, val_ner_loss: {val_ner_loss}")
             # Log the losses to wandb
             if use_wandb and not hypertuning:
                 wandb.log({"Training Main Loss": train_main_loss, "Training Total Loss": train_loss,

@@ -50,8 +50,10 @@ def get2device(data, device):
 
 
 def main_loss(scores, labels, normalization = False):
-
-    device = scores.device
+    if torch.isnan(scores).any(): 
+        print('Nans in scores')
+    if torch.isnan(labels).any():
+        print('Nans in labels')
     if normalization: # normalization? TODO
         scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
         scores = torch.exp(scores)  # apply exponential function
@@ -59,6 +61,8 @@ def main_loss(scores, labels, normalization = False):
         scores = scores / sum_exp  # normalize the scores to sum to 1
     sum_exp = torch.sum(torch.exp(scores), dim = 1)
     pos_scores = torch.sum(scores * labels, axis = 1)
+    print(f"pos contains nan: {torch.isnan(pos_scores).any()}")
+    print(f"sum_exp contains nan: {torch.isnan(sum_exp).any()}")
     return -torch.log(torch.exp(pos_scores)/sum_exp).mean() 
 
 
