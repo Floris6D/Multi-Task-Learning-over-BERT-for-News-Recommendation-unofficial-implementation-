@@ -31,7 +31,7 @@ def main():
                                        dataloader_val   = dataloader_val, 
                                        cfg              = cfg["trainer"],
                                        use_wandb        = cfg["wandb"], 
-                                       name_run         = cfg["name_run"])
+                                       name_run         = cfg.get("name_run", "unnamed"))
     
     #TODO: JE: Make submission file
 
