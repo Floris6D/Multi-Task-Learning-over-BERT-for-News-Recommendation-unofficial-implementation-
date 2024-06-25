@@ -101,6 +101,8 @@ class Mtrec(torch.nn.Module):
         N = len(dataloader_val.dataset)
         total_loss      /= N
         total_main_loss /= N
+        total_cat_loss  /= N
+        total_ner_loss  /= N
         if print_flag: 
             print(f"Validation total Loss: {total_loss}")
             print(f"Validation main Loss: {total_main_loss}")
