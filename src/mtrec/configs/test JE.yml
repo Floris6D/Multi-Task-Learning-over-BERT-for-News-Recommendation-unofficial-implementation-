@@ -14,6 +14,7 @@ user_encoder:
   hidden_size: 128
 
 trainer:
+  aux_scaler: 0.3
   optimizer : adam
   epochs: 1
   lr_user : 0.001

@@ -1,43 +1,16 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import numpy as np
-import copy
-import random
 
-import matplotlib.pyplot as plt
+"""
+credit for this script goes to Wei Cheng Tseng
+Github: https://github.com/WeiChengTseng/Pytorch-PCGrad/blob/master/pcgrad.py 
 
-def apply_pca(points):
-    # Convert the list of points to a numpy array
-    points_array = np.array(points)
+The only change was made to the pc_backward function to handle auxiliarry task differently compared to 
+the main task. The code was modified to complement the paper: "MTRec: Multi-Task Learning over BERT for News Recommendation".
 
-    # Calculate the mean of the points
-    mean = np.mean(points_array, axis=0)
+Where code was changed is marked with a comment: # START - code for MTRec and # END - code for MTRec
+"""
 
-    # Subtract the mean from the points
-    centered_points = points_array - mean
-
-    # Calculate the covariance matrix
-    covariance_matrix = np.cov(centered_points, rowvar=False)
-
-    # Perform eigen decomposition on the covariance matrix
-    eigenvalues, eigenvectors = np.linalg.eig(covariance_matrix)
-
-    # Sort the eigenvalues and eigenvectors in descending order
-    sorted_indices = np.argsort(eigenvalues)[::-1]
-    sorted_eigenvalues = eigenvalues[sorted_indices]
-    sorted_eigenvectors = eigenvectors[:, sorted_indices]
-
-    # Select the top 2 eigenvectors
-    selected_eigenvectors = sorted_eigenvectors[:, :2]
-
-    # Project the centered points onto the selected eigenvectors
-    projected_points = np.dot(centered_points, selected_eigenvectors)
-
-    return projected_points
-
-#TODO: Implement the PCGrad class as outlined in the paper
 class PCGrad():
     def __init__(self, optimizer, reduction='sum', lamb=0.3):
         self._optim, self._reduction = optimizer, reduction
@@ -78,7 +51,7 @@ class PCGrad():
 
     def _project_conflicting(self, grads, has_grads, shapes=None):
         shared = torch.stack(has_grads).prod(0).bool()
-        ##TODO not sure how this handles batches
+        #### START - code for MTRec ####
         main_grad = grads[0]
         aux_grads = torch.stack(grads[1:], axis=1)
         aux_grad = self.lamb * aux_grads.sum(dim=1)
@@ -91,7 +64,7 @@ class PCGrad():
             aux_grad = new_aux_grad
         
         pc_grad = [main_grad , aux_grad] 
-
+        #### END - code for MTRec ####
         merged_grad = torch.zeros_like(grads[0]).to(grads[0].device)
 
         if self._reduction == "mean":
@@ -177,58 +150,3 @@ class PCGrad():
                 has_grad.append(torch.ones_like(p).to(p.device))
         return grad, shape, has_grad
 
-
-# class TestNet(nn.Module):
-#     def __init__(self):
-#         super().__init__()
-#         self._linear = nn.Linear(3, 4)
-
-#     def forward(self, x):
-#         return self._linear(x)
-
-
-# class MultiHeadTestNet(nn.Module):
-#     def __init__(self):
-#         super().__init__()
-#         self._linear = nn.Linear(3, 2)
-#         self._head1 = nn.Linear(2, 4)
-#         self._head2 = nn.Linear(2, 4)
-
-#     def forward(self, x):
-#         feat = self._linear(x)
-#         return self._head1(feat), self._head2(feat)
-
-
-# if __name__ == '__main__':
-
-#     # fully shared network test
-#     print("fully shared network test")
-#     torch.manual_seed(6)
-#     x, y = torch.randn(2, 3), torch.randn(2, 4)
-#     net = TestNet()
-#     y_pred = net(x)
-#     pc_adam = PCGrad(optim.Adam(net.parameters()))
-#     pc_adam.zero_grad()
-#     loss1_fn, loss2_fn, loss3_fn = nn.L1Loss(), nn.MSELoss(), nn.SmoothL1Loss()
-#     loss1, loss2, loss3 = loss1_fn(y_pred, y), loss2_fn(y_pred, y), loss3_fn(y_pred, y)
-
-#     pc_adam.pc_backward([loss1, loss2, loss3])
-#     for p in net.parameters():
-#         print(p.grad)
-
-#     print('-' * 80)
-#     print("seperated shared network test")
-#     # seperated shared network test
-
-#     torch.manual_seed(4)
-#     x, y = torch.randn(2, 3), torch.randn(2, 4)
-#     net = MultiHeadTestNet()
-#     y_pred_1, y_pred_2 = net(x)
-#     pc_adam = PCGrad(optim.Adam(net.parameters()))
-#     pc_adam.zero_grad()
-#     loss1_fn, loss2_fn = nn.MSELoss(), nn.MSELoss()
-#     loss1, loss2 = loss1_fn(y_pred_1, y), loss2_fn(y_pred_2, y)
-
-#     pc_adam.pc_backward([loss1, loss2])
-#     for p in net.parameters():
-#         print(p.grad)
