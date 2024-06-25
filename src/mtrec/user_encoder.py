@@ -18,7 +18,7 @@ class UserEncoder(torch.nn.Module):
         # Get all empty news embeddings
         M = torch.all(R==0, dim =2).int() #batch_size * hist
         M_float = M.float()
-        M_float[M == 1] = float('-inf')
+        M_float[M == 1] = float('-inf').to(self.device)
 
         tanhWR = tanh(torch.einsum("ij,bjk->bik", self.W, R.transpose(1, 2)))
         unnormalized_att = torch.sum(self.q * tanhWR, axis = 1).squeeze() + M_float #batch_size * h

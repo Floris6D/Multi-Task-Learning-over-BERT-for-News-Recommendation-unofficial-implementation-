@@ -62,7 +62,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
             param.requires_grad=True
 
     if not cfg["skip_gs"]: 
-        optimizer = PCGrad(optimizer) #TODO: PCGrad
+        optimizer = PCGrad(optimizer, lamb = cfg["aux_scaler"])
     
     # Initialize to track best
     best_loss = float('inf')

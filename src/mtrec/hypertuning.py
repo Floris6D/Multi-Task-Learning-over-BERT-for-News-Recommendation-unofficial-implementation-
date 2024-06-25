@@ -12,8 +12,19 @@ from utils import timer
 
 @timer
 def test_config(trial, cfg_base, device):
-    start = time.time()
+    """
+    Perform hyperparameter tuning for the configuration.
+
+    Args:
+        trial (optuna.Trial): The optuna trial object for hyperparameter optimization.
+        cfg_base (dict): The base configuration.
+        device (str): The device to run the training on.
+
+    Returns:
+        float: The best validation loss from this hyperparameter instance.
+    """
     cfg = copy.deepcopy(cfg_base)
+    # Get the hyperparameter options
     hcf = cfg["hypertuning"]
     hidden_sizes = hcf["hidden_size"]
     nl_min, nl_max = hcf["num_layers"]["min"],hcf["num_layers"]["max"]
@@ -36,9 +47,10 @@ def test_config(trial, cfg_base, device):
     cfg["trainer"]["lr_bert"] = trial.suggest_float("lr_bert", lr_min, lr_max, log=True)
     
     cfg["trainer"]["optimizer"] = trial.suggest_categorical("optimizer", optimizers)
-    
+    # Initialize model
     Mtrec_model = Mtrec(cfg, device=device)
     
+    #Train the model
     try:    
         (dataloader_train, dataloader_val) = get_dataloaders(cfg)
         _, best_validation_loss =       train(model      = Mtrec_model, 
@@ -51,24 +63,37 @@ def test_config(trial, cfg_base, device):
     
     except KeyboardInterrupt:
         best_validation_loss = 1000
-    # except Exception as e:
-    #     print(f"EXCEPTION AS : {e}")
-    #     best_validation_loss = 1000
-    
-    
-    print(f"Time taken for trial: {time.time()-start}")
-    return best_validation_loss
+    except Exception as e:
+        print(f"EXCEPTION: {e}")
+        best_validation_loss = 1000
+    finally: 
+        #Report best result
+        return best_validation_loss
 
 
 def merge(best_params, cfg):
+    """
+    Merge the best_params dictionary into the cfg dictionary to prepare for export.
+
+    Parameters:
+    - best_params (dict): A dictionary containing the best hyperparameters.
+    - cfg (dict): A dictionary containing the configuration.
+
+    Returns:
+    - cfg (dict): The updated configuration with the best hyperparameters.
+    """
+
     # Categorical net
     cfg["news_encoder"]["cfg_cat"]["hidden_size"] = best_params["cat_hidden_size"]
     cfg["news_encoder"]["cfg_cat"]["num_layers"] = best_params["cat_num_layers"]
+    
     # NER net
     cfg["news_encoder"]["cfg_ner"]["hidden_size"] = best_params["ner_hidden_size"]
     cfg["news_encoder"]["cfg_ner"]["num_layers"] = best_params["ner_num_layers"]
+    
     # User encoder
     cfg["user_encoder"]["hidden_size"] = best_params["user_hidden_size"]
+    
     # Training
     cfg["trainer"]["batch_size"] = best_params["batch_size"]
     
@@ -80,24 +105,33 @@ def merge(best_params, cfg):
     return cfg
 
 def main():
+    # Parse the arguments and load config
     parser = argparse.ArgumentParser(description='Process some arguments.')
     parser.add_argument('--file', default='test_hypertune', help='Path to the configuration file')
     args = parser.parse_args()
     cfg = load_configuration(args.file)
-
-    if cfg["wandb"]:    
+    
+    # Initialise wandb if needed
+    if cfg["wandb"]: 
         import wandb
         wandb.init(project="mtrec", name="hypertuning", config=cfg )
-   
+    
+    # Get the device
     device =  "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # Define the config for non-tuned parameters
     target_func = partial(test_config, cfg_base = cfg, device=device)
-
+    
+    # Perform the hyperparameter tuning
     study = optuna.create_study(direction = "minimize")
-    study.optimize(target_func, n_trials=100)
-
+    study.optimize(target_func, n_trials=cfg["hypertuning"]["n_trials"], show_progress_bar=True)
+    
+    # Finish the wandb run
     print("best parameters:\n", study.best_params)
     wandb.log({"best params": study.best_params})
     wandb.finish()
+
+    # Export the best configuration
     best_cfg = merge(study.best_params, cfg)
     with open('configs/best_config.yml', 'w') as file:
         yaml.dump(best_cfg, file, default_flow_style=False)

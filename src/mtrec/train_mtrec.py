@@ -18,7 +18,7 @@ def main():
         wandb.init(project="MTRec", config=cfg)
     
     # (dataloader_train, dataloader_val, dataloader_test) = get_dataloaders(cfg)
-    (dataloader_train, dataloader_val)= get_dataloaders(cfg)
+    (dataloader_train, dataloader_val) = get_dataloaders(cfg)
     
     # Get the model
     Mtrec_model = Mtrec(cfg, device=device).to(device)
