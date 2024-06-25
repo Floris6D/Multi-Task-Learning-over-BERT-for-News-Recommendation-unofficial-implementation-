@@ -64,7 +64,7 @@ class NewsEncoder(torch.nn.Module):
         #mask = mask[:, 1:].reshape(sentence_tokens.shape[0], sentence_tokens.shape[1], -1) #all tokens but CLS
         mask_ner = mask.clone()
         mask_ner[:, 0] = 0 #CLS token is not used for NER
-        last_idx = torch.argmax(torch.fliplr(mask_ner), dim=1).tp(self.device)
+        last_idx = torch.argmax(torch.fliplr(mask_ner), dim=1).to(self.device)
         cols = mask_ner.shape[1] - 1 - last_idx
         mask_ner[torch.arange(mask_ner.shape[0]).to(self.device), cols] = 0 # Set the last token to 0, now cls and sep tokens are 0
         mask_ner = mask_ner.reshape(sentence_tokens.shape[0], sentence_tokens.shape[1], -1) #Reshape
