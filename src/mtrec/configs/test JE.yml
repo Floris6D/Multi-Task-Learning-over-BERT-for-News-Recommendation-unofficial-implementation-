@@ -1,5 +1,7 @@
 #test config
 name_run: testJE
+max_val_bs: 64
+
 news_encoder:
   cfg_cat:
     num_layers: 2
