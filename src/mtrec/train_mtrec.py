@@ -4,9 +4,6 @@ from trainer import train
 import torch
 from utils import load_configuration, get_dataloaders
 
-
-
-
 def main():
     # Parse the arguments
     parser = argparse.ArgumentParser(description='Process some arguments.')
