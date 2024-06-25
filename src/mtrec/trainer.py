@@ -43,15 +43,17 @@ def train(model, dataloader_train, dataloader_val, cfg,
     else:
         print("Invalid optimizer <{}>.".format(cfg["optimizer"]))
         return
-    # Add gradient surgery
-    if not cfg["skip_gs"]: 
-        optimizer = PCGrad(optimizer, lamb = cfg["aux_scaler"])
+    
 
     # Make sure we tune the entire BERT model
     for param_group in optimizer.param_groups:
         for param in param_group['params']:
             param.requires_grad=True
 
+    # Add gradient surgery
+    if not cfg["skip_gs"]: 
+        optimizer = PCGrad(optimizer, lamb = cfg["aux_scaler"])
+        
     # Initialize to track best
     best_loss = float('inf')
     save_num = 0
