@@ -5,9 +5,10 @@ from torch.nn.functional import softmax, tanh
 
 
 class UserEncoder(torch.nn.Module):
-    def __init__(self, embedding_dim, hidden_size = 128):
+    def __init__(self, embedding_dim, hidden_size, device:str = "cpu"):
         super(UserEncoder, self).__init__()
         #parameters for calculating attention
+        self.device = device
         self.W = torch.nn.Parameter(torch.empty(hidden_size, embedding_dim))
         self.q = torch.nn.Parameter(torch.empty(1,hidden_size,1))
         torch.nn.init.kaiming_uniform_(self.W, a=math.sqrt(5))
@@ -15,7 +16,6 @@ class UserEncoder(torch.nn.Module):
     
     def calc_att(self, R):
         tanhWR = tanh(torch.einsum("ij,bjk->bik", self.W, R.transpose(1, 2)))
-        print(f"tanhWR device: {tanhWR.get_device()}") 
         return softmax(torch.sum(self.q * tanhWR, axis = 1).squeeze(), dim = 1)
     
     

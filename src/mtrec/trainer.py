@@ -1,175 +1,13 @@
 import torch
-import torch.nn as nn
 import os
 import copy
-import matplotlib.pyplot as plt
-import numpy as np
 from gradient_surgery import PCGrad
+from utils_training import *
 
-# Import the required functions from the metrics package
-#from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
-
-
-
-
-
-class TestNet(nn.Module): #TODO: remove this
-    def __init__(self, input_dim=2*768, output_dim=1, hidden_dim=128):
-        super(TestNet, self).__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim))
-
-    def forward(self, user_embedding, candidate_embeddings):
-        # user_embedding: batch_size * embedding_dim
-        # candidate_embeddings: batch_size * N * embedding_dim
-        bs, N, emb_dim = candidate_embeddings.shape
-        candidate_embeddings = candidate_embeddings.reshape(bs*N, emb_dim)
-        x = torch.cat([user_embedding, candidate_embeddings], dim=1)
-        x = self.fc(x)
-        x = x.reshape(bs, N)
-        return x
-
-
-def cross_product(user_embedding, news_embedding):
-    """
-    Function to calculate the cross product of the user and news embeddings.
-    
-    Args:
-        user_embedding (torch.Tensor): Batch_size * embedding_dimension tensor of user embeddings.
-        news_embedding (torch.Tensor): Batch_size * N * embedding_dimension tensor of news embeddings.
-        
-    Returns:
-        torch.Tensor: Batch_size * N tensor of scores.
-    """
-    bsu, emb_dimu = user_embedding.shape
-    bsn, N, emb_dimn = news_embedding.shape
-    assert bsu == bsn , "Batch sizes of user and news embeddings do not match"
-    assert emb_dimu == emb_dimn, "Embedding dimensions of user and news embeddings do not match"
-    # assert user_embedding.requires_grad, "User embedding requires grad"
-    # assert news_embedding.requires_grad, "News embedding requires grad"
-    scores = torch.einsum("bk,bik->bi",user_embedding, news_embedding)
-    return scores
-
-
-def print_optimizer_parameters(optimizer):
-    for i, param_group in enumerate(optimizer.param_groups):
-        print(f"Parameter group {i}:")
-        for param in param_group['params']:
-            print(f"Parameter: {param.shape}")
-            print(f"Requires Grad: {param.requires_grad}")
-
-def cosine_sim(user_embedding, news_embedding):
-    """
-    Function to calculate the cross product of the user and news embeddings.
-    
-    Args:
-        user_embedding (torch.Tensor): Batch_size * embedding_dimension tensor of user embeddings.
-        news_embedding (torch.Tensor): Batch_size * N * embedding_dimension tensor of news embeddings.
-        
-    Returns:
-        torch.Tensor: Batch_size * N tensor of scores.
-    """
-    scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2)
-    return scores
-
-
-def get2device(data, device):
-    (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview), impression_id = data
-    return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device)), impression_id.to(device)
-
-
-def main_loss(scores, labels, normalization = True):
-    #assert scores.requires_grad, "Scores should require grad"
-    if normalization: # normalization? TODO
-        scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  # subtract the maximum value for numerical stability
-        scores = torch.exp(scores)  # apply exponential function
-        sum_exp = torch.sum(scores, dim=1, keepdim=True)  # calculate the sum of exponential scores
-        scores = scores / sum_exp  # normalize the scores to sum to 1
-    sum_exp = torch.sum(torch.exp(scores), dim = 1)
-    pos_scores = torch.sum(scores * labels, axis = 1)
-    return -torch.log(torch.exp(pos_scores)/sum_exp).mean() 
-
-
-def category_loss(p1, p2, l1, l2):
-    """
-    First we untangle all the category predictions and labels
-    Then apply cross entropy loss
-    p1 is prediction 1 related to the inview articles
-    p2 is prediction 2 related to the history articles
-    l1 is label 1 related to the inview articles
-    l2 is label 2 related to the history articles (this contains nans for padding)
-    """
-    bs, N1, num_cat = p1.shape
-    bs, N2, num_cat = p2.shape
-    p1 = p1.reshape(bs*N1, num_cat)
-    p2 = p2.reshape(bs*N2, num_cat)
-    # l1 = torch.argmax(l1, dim=2) # go from one-hot to index OLD WAY
-    # l2 = torch.argmax(l2, dim=2) # go from one-hot to index
-    l1 = l1.reshape(bs*N1)
-    l2 = l2.reshape(bs*N2)
-    predictions = torch.cat([p1, p2], dim = 0)
-    labels = torch.cat([l1, l2], dim = 0)
-    
-    # Filter out the rows which only contain nans in the predictions
-    mask = ~torch.isnan(predictions).any(dim=1)
-    predictions = predictions[mask]
-    labels = labels[mask]
-    
-    # Return cross entropy loss
-    return nn.CrossEntropyLoss()(predictions, labels)
-
-def NER_loss(p1, p2, l1, l2, mask1, mask2): 
-    """
-    First we untangle all the NER predictions and labels
-    Then apply cross entropy loss
-    """
-    # Get shapes
-    bs, N1, tl1, num_ner = p1.shape
-    bs, N2, tl2, num_ner = p2.shape
-    # Reshape predictions
-    p1 = p1.reshape(bs*N1*tl1, num_ner)
-    p2 = p2.reshape(bs*N2*tl2, num_ner)
-    predictions = torch.cat([p1, p2], dim = 0)
-    # Reshape mask
-    mask1   = mask1.reshape(bs*N1*tl1)
-    mask2   = mask2.reshape(bs*N2*tl2)
-    mask = torch.cat([mask1, mask2], dim = 0)
-    # Reshape labels (insert a -1 for the cls token and remove last row of demension 2)
-    l1 = torch.cat([torch.zeros(bs, N1, 1).long(), l1], dim = 2)
-    l1 = l1[:,:,:tl1].reshape(bs*N1*tl1)
-    l2 = torch.cat([torch.zeros(bs, N2, 1).long(), l2], dim = 2)
-    l2 = l2[:,:,:tl2].reshape(bs*N2*tl2)
-    labels = torch.cat([l1, l2], dim = 0).long()
-    # Apply mask
-    labels = labels[mask.bool()]
-    predictions = predictions[mask.bool()]
-    # Laslty also remove the labels which are -1 #TODO: JE: This is caused by different tokenization by us and BERT
-    mask = labels != -1
-    labels = labels[mask]
-    predictions = predictions[mask]
-    # Calculate loss
-    return nn.CrossEntropyLoss()(predictions, labels)
-
-
-def plot_loss(loss_train, loss_val, title:str = "Loss", save_dir:str = "default_savedir", xlabel:str = "Epoch", ylabel:str = "Loss"):
-    X = np.arange(1, len(loss_train)+1)
-    plt.plot(X, loss_train, label = "Training Loss")
-    X = np.arange(1, len(loss_val)+1)
-    plt.plot(X, loss_val, label = "Validation Loss")
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f"{save_dir}/{title}.png") 
     
 def train(model, dataloader_train, dataloader_val, cfg, 
           print_flag = True, save_dir:str = "saved_models", use_wandb:bool = False, 
-          hypertuning:bool = False):
+          hypertuning:bool = False, name_run:str = "unnamed"):
     """
     Function to train the model on the given dataset.
     
@@ -218,7 +56,6 @@ def train(model, dataloader_train, dataloader_val, cfg,
         print("Invalid optimizer <{}>.".format(cfg["optimizer"]))
         return
 
-
     #TURNEMALLON TODO: remove this?
     for param_group in optimizer.param_groups:
         for param in param_group['params']:
@@ -227,7 +64,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
     if not cfg["skip_gs"]: 
         optimizer = PCGrad(optimizer) #TODO: PCGrad
     
-    #initialize to track best
+    # Initialize to track best
     best_loss = float('inf')
     save_num = 0
 
@@ -239,44 +76,48 @@ def train(model, dataloader_train, dataloader_val, cfg,
     while os.path.exists(os.path.join(save_dir, f'run{save_num}')):
         save_num += 1
 
-    save_path = os.path.join(save_dir, f'run{save_num}')
+    save_path = os.path.join(save_dir, f'{name_run}_run{save_num}')
     os.makedirs(save_path, exist_ok=True)
 
     # Debugging: Confirm directory creation
     if not os.path.exists(save_path):
         raise RuntimeError(f"Failed to create directory: {save_path}")
-    
-    training_losses, validation_losses = [], []
+
     if print_flag: print(f"Saving models to {save_path}")
-    try: #training can be interrupted by catching KeyboardInterrupt
+    try: # Training can be interrupted by catching KeyboardInterrupt
         for epoch in range(cfg['epochs']):
             if print_flag: print(f"Epoch {epoch} / {cfg['epochs']}")
             
             # Training
-            total_loss, total_main_loss = model.train(dataloader_train, optimizer, print_flag, cfg)
-            training_losses.append(total_main_loss)
+            train_loss, train_main_loss, train_cat_loss, train_ner_loss = model.train(dataloader_train, optimizer, print_flag, cfg)
 
             # Validation
-            total_loss_val, total_main_loss_val = model.validate(dataloader_val, print_flag, cfg)
-            validation_losses.append(total_main_loss_val)
+            val_loss, val_main_loss, val_cat_loss, val_ner_loss = model.validate(dataloader_val, print_flag, cfg)
+
             
             # Log the losses to wandb
             if use_wandb and not hypertuning:
-                wandb.log({"Training Main Loss": total_main_loss, "Training Total Loss": total_loss,
-                        "Validation Main Loss": total_main_loss_val, "Validation Total Loss": total_loss_val})
+                wandb.log({"Training Main Loss": train_main_loss, "Training Total Loss": train_loss,
+                           "Training Cat Loss": train_cat_loss, "Training NER Loss": train_ner_loss,
+                            "Validation Main Loss": val_main_loss, "Validation Total Loss": val_loss,
+                            "Validation Cat Loss": val_cat_loss, "Validation NER Loss": val_ner_loss})
+                        
             elif use_wandb and hypertuning:
-                wandb.log({"Validation Main Loss": total_main_loss_val})
-            #saving best models
-            if total_loss_val < best_loss:   
-                best_loss = total_loss_val
-                if print_flag:           
-                    print(f"Saving model @{epoch}")
-                model.save_model(save_path)
-                best_model = copy.deepcopy(model)
+                wandb.log({"Validation Main Loss": val_main_loss, "Validation Total Loss": val_loss, 
+                           "Validation Cat Loss": val_cat_loss, "Validation NER Loss": val_ner_loss})	
+            # Saving best models
+            if val_loss < best_loss:   
+                best_loss = val_loss
+                if not hypertuning:
+                    if print_flag:           
+                        print(f"Saving model @{epoch}")
+                    model.save_model(save_path)
+                    best_model = copy.deepcopy(model)
+    
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best model so far.")
+    
     if use_wandb and not hypertuning: wandb.finish()
-    plot_loss(training_losses, validation_losses, save_dir = save_path)
     return best_model, best_loss
 
 # # Calculate the metrics #TODO look at dimensions of scores and labels

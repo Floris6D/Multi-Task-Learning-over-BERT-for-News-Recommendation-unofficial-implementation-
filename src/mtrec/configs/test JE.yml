@@ -1,4 +1,5 @@
 #test config
+name_run: testJE
 news_encoder:
   cfg_cat:
     num_layers: 2
