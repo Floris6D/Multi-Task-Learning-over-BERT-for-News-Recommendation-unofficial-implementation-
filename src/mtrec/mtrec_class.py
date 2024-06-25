@@ -2,7 +2,7 @@ from user_encoder import UserEncoder
 from news_encoder import NewsEncoder
 from transformers import  BertModel
 from peft import LoraConfig, get_peft_model
-from trainer import get2device, category_loss, NER_loss, cross_product, main_loss
+from utils_training import get2device, category_loss, NER_loss, cross_product, main_loss
 import torch
 import polars as pl
 from utils import timer

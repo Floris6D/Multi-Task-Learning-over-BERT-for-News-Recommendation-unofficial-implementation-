@@ -73,7 +73,7 @@ def main():
     device =  "cuda" if torch.cuda.is_available() else "cpu"
     target_func = partial(test_config, cfg_base = cfg, device=device)
 
-    study = optuna.create_study(direction = "maximize")
+    study = optuna.create_study(direction = "minimize")
     study.optimize(target_func, n_trials=100)
 
     print("best parameters:\n", study.best_params)
