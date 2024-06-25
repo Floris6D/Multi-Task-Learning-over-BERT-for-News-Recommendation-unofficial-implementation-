@@ -15,11 +15,11 @@ user_encoder:
 trainer:
   aux_scaler: 0.3
   optimizer: adamw
-  epochs: 2
+  epochs: 1
   lr_user: 0.001
   lr_news: 0.001
   lr_bert: 0.0001
-  batch_size: 2
+  batch_size: 16
   skip_ner: False
   skip_cat: False
   skip_gs: False

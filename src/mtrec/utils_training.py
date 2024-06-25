@@ -71,10 +71,6 @@ def main_loss(scores, labels, normalization=True):
     Returns:
         torch.Tensor: The calculated main loss.
     """
-    if torch.isnan(scores).any(): 
-        print('Nans in scores')
-    if torch.isnan(labels).any():
-        print('Nans in labels')
     if normalization: 
         scores = scores - torch.max(scores, dim=1, keepdim=True)[0]  #TODO why  [0]? 
         scores = torch.exp(scores)  # apply exponential function
@@ -83,12 +79,6 @@ def main_loss(scores, labels, normalization=True):
     sum_exp = torch.sum(torch.exp(scores), dim=1)
     pos_scores = torch.sum(scores * labels, axis=1)
     output = -torch.log(torch.exp(pos_scores)/sum_exp).mean() 
-    print(f"pos contains nan: {torch.isnan(pos_scores).any()}")
-    print(f"sum_exp contains nan: {torch.isnan(sum_exp).any()}")
-    print(f"output contains nan: {torch.isnan(output).any()}")
-    print(f"sum_exp: {sum_exp}")
-    print(f"pos_scores: {pos_scores}")
-    print(f"output: {output}")
     return output
 
 
