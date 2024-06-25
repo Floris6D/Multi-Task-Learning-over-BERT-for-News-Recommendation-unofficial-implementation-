@@ -6,9 +6,11 @@ class UserEncoder(torch.nn.Module):
     def __init__(self, embedding_dim, hidden_size, device:str = "cpu"):
         super(UserEncoder, self).__init__()
         self.device = device
+        
         # Parameters for attention layer
         self.W = torch.nn.Parameter(torch.empty(hidden_size, embedding_dim))
         self.q = torch.nn.Parameter(torch.empty(1,hidden_size,1))
+
         # Initialize the parameters
         torch.nn.init.kaiming_uniform_(self.W, a=math.sqrt(5))
         torch.nn.init.kaiming_uniform_(self.q, a=math.sqrt(5))
