@@ -1,8 +1,6 @@
 import torch
 import math
-
 from torch.nn.functional import softmax, tanh
-
 
 class UserEncoder(torch.nn.Module):
     def __init__(self, embedding_dim, hidden_size, device:str = "cpu"):

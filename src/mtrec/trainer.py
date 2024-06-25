@@ -44,7 +44,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
     #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'embeddings' in name], 'lr': 1e-5},
     #     {'params': [param for name, param in news_encoder.bert.named_parameters() if 'classifier' in name], 'lr': 5e-5},
     # ]
-
+    best_model = None
 
     if cfg["optimizer"] == "adam":
         optimizer = torch.optim.Adam(params)
