@@ -15,8 +15,8 @@ class Mtrec(torch.nn.Module):
         embedding_dim = bert.config.hidden_size
         self.bert = get_peft_model(bert, LoraConfig(cfg["lora_config"]))
         
-        self.user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim).to(device)
-        self.news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim, extended_NER = cfg['dataset']['extended_NER']).to(device)
+        self.user_encoder = UserEncoder(**cfg['user_encoder'], embedding_dim=embedding_dim, device=device).to(device)
+        self.news_encoder = NewsEncoder(**cfg['news_encoder'], bert=bert, embedding_dim=embedding_dim, extended_NER = cfg['dataset']['extended_NER'], device=device).to(device)
         
         self.device = device
     

@@ -3,8 +3,9 @@ from transformers import BertModel
 
 
 class NewsEncoder(torch.nn.Module):
-    def __init__(self, embedding_dim, bert, cfg_cat, cfg_ner, extended_NER = False):
+    def __init__(self, embedding_dim, bert, cfg_cat, cfg_ner, extended_NER = False, device:str = "cpu"):
         super(NewsEncoder, self).__init__()
+        self.device = device
         if extended_NER:
             self.num_ner = cfg_ner["extended_output_size"]
         elif extended_NER is False:
@@ -39,6 +40,7 @@ class NewsEncoder(torch.nn.Module):
         
         # Again remove all rows with only zeros in the mask
         subset_idx = mask.sum(dim=1) > 0
+        subset_idx = subset_idx.to(self.device)
         used_tokens = cls_tokens[subset_idx]
         
         # Get the category predictions logits
@@ -46,6 +48,7 @@ class NewsEncoder(torch.nn.Module):
         
         # Now reshape the logits back to the original shape fill with nas when no data of batch size inview articles using the reversed subset_idx
         final_logits = torch.nan*torch.ones(bs*n, logits.shape[1])
+        final_logits = final_logits.to(self.device)
         final_logits[subset_idx] = logits
         logits = final_logits.reshape(bs, n, -1)
         
@@ -61,13 +64,13 @@ class NewsEncoder(torch.nn.Module):
         #mask = mask[:, 1:].reshape(sentence_tokens.shape[0], sentence_tokens.shape[1], -1) #all tokens but CLS
         mask_ner = mask.clone()
         mask_ner[:, 0] = 0 #CLS token is not used for NER
-        last_idx = torch.argmax(torch.fliplr(mask_ner), dim=1)
+        last_idx = torch.argmax(torch.fliplr(mask_ner), dim=1).tp(self.device)
         cols = mask_ner.shape[1] - 1 - last_idx
-        mask_ner[torch.arange(mask_ner.shape[0]), cols] = 0 # Set the last token to 0, now cls and sep tokens are 0
+        mask_ner[torch.arange(mask_ner.shape[0]).to(self.device), cols] = 0 # Set the last token to 0, now cls and sep tokens are 0
         mask_ner = mask_ner.reshape(sentence_tokens.shape[0], sentence_tokens.shape[1], -1) #Reshape
         
         logits = torch.nan*torch.ones(sentence_tokens.shape[0], sentence_tokens.shape[1], sentence_tokens.shape[2], self.num_ner)
-        
+        logits = logits.to(self.device)
         for i in range(sentence_tokens.shape[0]): # Loop over batches
             for j in range(sentence_tokens.shape[1]): # Loop over inview articles
                 if mask_ner[i, j, :].sum() == 0:
@@ -123,10 +126,9 @@ class NewsEncoder(torch.nn.Module):
         x = self.bert(tokens, bert_mask)
         last_hidden_state = x.last_hidden_state
         news_embeddings = last_hidden_state[:, 0 , :] #CLS token at index 0
-        print(f"news_embeddings device: {news_embeddings.get_device()}")
         
         # Restructure the news embeddings in the original shape and using the reversed subset_idx if subset_idx was false, news embeddings will be zero
-        final_news_embeddings = torch.zeros(bs*n, news_embeddings.shape[1])
+        final_news_embeddings = torch.zeros(bs*n, news_embeddings.shape[1]).to(self.device)
         final_news_embeddings[subset_idx] = news_embeddings
         final_news_embeddings = final_news_embeddings.reshape(bs, n, -1)
         
@@ -134,7 +136,7 @@ class NewsEncoder(torch.nn.Module):
             return final_news_embeddings, None, None
         
         # Also restructure the last_hidden_state and use the reversed subset_idx
-        final_last_hidden_state = torch.zeros(bs*n, last_hidden_state.shape[1], last_hidden_state.shape[2])
+        final_last_hidden_state = torch.zeros(bs*n, last_hidden_state.shape[1], last_hidden_state.shape[2]).to(self.device)
         final_last_hidden_state[subset_idx] = last_hidden_state
         final_last_hidden_state = final_last_hidden_state.reshape(bs, n, ts, -1) # Batch size, max inview articles, max title length, hidden size (BERT)
         
