@@ -1,4 +1,4 @@
-name_run: Everything
+name_run: Only_NER
 news_encoder:
   cfg_cat:
     num_layers: 1 #TODO: Change hyperparameters
@@ -11,7 +11,7 @@ news_encoder:
     extend_output_size: 7
 
 user_encoder:
-  hidden_size: 200
+  hidden_size: 200 #TODO: Change hyperparameters
 
 trainer:
   optimizer: adam
@@ -21,7 +21,7 @@ trainer:
   lr_bert: 0.00001
   batch_size: 64
   skip_ner: False
-  skip_cat: False
+  skip_cat: True
   skip_gs: False
 
 dataset:

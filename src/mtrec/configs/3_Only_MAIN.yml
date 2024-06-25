@@ -1,4 +1,4 @@
-name_run: Everything
+name_run: Only_MAIN
 news_encoder:
   cfg_cat:
     num_layers: 1 #TODO: Change hyperparameters
@@ -20,9 +20,9 @@ trainer:
   lr_news: 0.001
   lr_bert: 0.00001
   batch_size: 64
-  skip_ner: False
-  skip_cat: False
-  skip_gs: False
+  skip_ner: True
+  skip_cat: True
+  skip_gs: True
 
 dataset:
   data_dir: data
