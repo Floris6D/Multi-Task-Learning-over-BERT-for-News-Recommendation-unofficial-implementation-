@@ -1,10 +1,9 @@
 import torch
 import os
 import copy
-from gradient_surgery2 import PCGrad
+from gradient_surgery import PCGrad
 from utils_training import *
 import time
-import wandb
 
     
 def train(model, dataloader_train, dataloader_val, cfg, 
