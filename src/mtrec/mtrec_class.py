@@ -164,7 +164,7 @@ class Mtrec(torch.nn.Module):
         )
         return pred_df
         
-
+    @timer
     def save_model(self, path):
         # Saving the model state
         torch.save(self.user_encoder.state_dict(), path + "/user_encoder.pth")

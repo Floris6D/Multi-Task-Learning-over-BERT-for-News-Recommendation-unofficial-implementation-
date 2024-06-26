@@ -3,7 +3,8 @@ import os
 import copy
 from gradient_surgery import PCGrad
 from utils_training import *
-
+import time
+import wandb
 
     
 def train(model, dataloader_train, dataloader_val, cfg, 
@@ -22,7 +23,12 @@ def train(model, dataloader_train, dataloader_val, cfg,
         dataloader_val (torch.utils.data.DataLoader): The dataloader for the validation dataset.
         device (torch.device): The device to be used for training.
     """
-    if use_wandb: import wandb
+    if use_wandb: 
+        start_time = time.time()
+        import wandb
+        end_time = time.time()
+        import_time = end_time - start_time
+        print(f"Importing wandb took {import_time} seconds.")
     # Initialize model
     user_encoder = model.user_encoder
     news_encoder = model.news_encoder
@@ -68,7 +74,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
     save_path = os.path.join(save_dir, f'{name_run}_run{save_num}')
     os.makedirs(save_path, exist_ok=True)
     if print_flag: print(f"Saving models to {save_path}")
-
+    print(f"time before training: {time.time()-start_time}")
     try: # Training can be interrupted by catching KeyboardInterrupt
         for epoch in range(cfg['epochs']):
             if print_flag: print(f"Epoch {epoch} / {cfg['epochs']}")

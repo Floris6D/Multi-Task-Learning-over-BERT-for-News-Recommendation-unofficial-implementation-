@@ -1,6 +1,8 @@
 import torch
 from torch import nn
+from utils import timer
 
+@timer
 def cross_product(user_embedding, news_embedding):
     """
     Function to calculate the cross product of the user and news embeddings.
@@ -43,7 +45,7 @@ def cosine_sim(user_embedding, news_embedding):
     scores = torch.cosine_similarity(user_embedding.unsqueeze(1), news_embedding, axis = 2).to(device)
     return scores
 
-
+@timer
 def get2device(data, device):
     '''
     Move the input data tensors to the specified device.
@@ -58,7 +60,7 @@ def get2device(data, device):
     (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview), impression_id = data
     return (user_histories.to(device), user_mask.to(device), news_tokens.to(device), news_mask.to(device)), (labels.to(device), c_labels_his.to(device), c_labels_inview.to(device), ner_labels_his.to(device), ner_labels_inview.to(device)), impression_id.to(device)
 
-
+@timer
 def main_loss(scores, labels, normalization=True):
     """
     Calculate the main loss for a given set of scores and labels.
@@ -81,7 +83,7 @@ def main_loss(scores, labels, normalization=True):
     output = -torch.log(torch.exp(pos_scores)/sum_exp).mean() 
     return output
 
-
+@timer
 def category_loss(p1, p2, l1, l2):
     """
     First we untangle all the category predictions and labels
@@ -109,6 +111,8 @@ def category_loss(p1, p2, l1, l2):
     # Return cross entropy loss
     return nn.CrossEntropyLoss()(predictions, labels)
 
+
+@timer
 def NER_loss(p1, p2, l1, l2, mask1, mask2): 
     """
     First we untangle all the NER predictions and labels
