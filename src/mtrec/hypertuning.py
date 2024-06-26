@@ -58,12 +58,10 @@ def test_config(trial, cfg_base, device):
                                             cfg              = cfg["trainer"], 
                                             device           = device, 
                                             use_wandb        = cfg["wandb"],
-                                            hypertuning      = True)
+                                            hypertuning      = True, 
+                                            name_run         = cfg.get("name_run", "unnamed"))
     
     except KeyboardInterrupt:
-        best_validation_loss = 1000
-    except Exception as e:
-        print(f"EXCEPTION: {e}")
         best_validation_loss = 1000
     finally: 
         #Report best result
