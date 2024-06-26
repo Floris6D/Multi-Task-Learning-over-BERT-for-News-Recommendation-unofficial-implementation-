@@ -29,10 +29,10 @@ trainer:
 
 dataset:
   data_dir: data_small
-  history_size: 10
+  history_size: 12
   max_title_length: 20
   npratio: 4
-  dataset_fraction: 0.1
+  dataset_fraction: 0.02
   extended_NER: False
 
 model:
