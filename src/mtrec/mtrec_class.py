@@ -66,6 +66,7 @@ class Mtrec(torch.nn.Module):
             else:
                 loss.backward()
             optimizer.step()
+            break #TODO remove this break
         N = len(dataloader_train.dataset)
         total_main_loss /= N
         total_cat_loss  /= N
@@ -105,7 +106,8 @@ class Mtrec(torch.nn.Module):
                 main_loss = criterion(scores, labels).item()
                 # Metrics
                 total_loss += main_loss 
-                total_main_loss += main_loss               
+                total_main_loss += main_loss
+                break #TODO remove this break               
         N = len(dataloader_val.dataset)
         total_loss      /= N
         total_main_loss /= N
