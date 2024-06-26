@@ -104,7 +104,7 @@ def merge(best_params, cfg):
 def main():
     # Parse the arguments and load config
     parser = argparse.ArgumentParser(description='Process some arguments.')
-    parser.add_argument('--file', default='test_hypertune', help='Path to the configuration file')
+    parser.add_argument('--file', default='hypertune', help='Path to the configuration file')
     args = parser.parse_args()
     cfg = load_configuration(args.file)
     
