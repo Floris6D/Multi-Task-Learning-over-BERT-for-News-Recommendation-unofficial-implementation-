@@ -55,8 +55,7 @@ def test_config(trial, cfg_base, device):
         _, best_validation_loss =       train(model      = Mtrec_model, 
                                             dataloader_train = dataloader_train, 
                                             dataloader_val   = dataloader_val, 
-                                            cfg              = cfg["trainer"], 
-                                            device           = device, 
+                                            cfg              = cfg["trainer"],  
                                             use_wandb        = cfg["wandb"],
                                             hypertuning      = True, 
                                             name_run         = cfg.get("name_run", "unnamed"))
