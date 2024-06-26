@@ -89,21 +89,21 @@ def train(model, dataloader_train, dataloader_val, cfg,
                            "Training Cat Loss": train_cat_loss, "Training NER Loss": train_ner_loss,
                             "Validation Main Loss": val_main_loss, "Validation Total Loss": val_loss,
                             "Validation Cat Loss": val_cat_loss, "Validation NER Loss": val_ner_loss})
-                        
-            elif use_wandb and hypertuning:
-                wandb.log({"Validation Main Loss": val_main_loss, "Validation Total Loss": val_loss, 
-                           "Validation Cat Loss": val_cat_loss, "Validation NER Loss": val_ner_loss})	
-            # Saving best model
-            if val_main_loss < best_loss:   
-                best_loss = val_main_loss
-                if not hypertuning:
-                    if print_flag:           
-                        print(f"Saving model @{epoch}")
-                    model.save_model(save_path)
-                    best_model = copy.deepcopy(model)
-    
+            if not hypertuning:
+                # Saving best model
+                if val_main_loss < best_loss:   
+                    best_loss = val_main_loss
+                    if not hypertuning:
+                        if print_flag:           
+                            print(f"Saving model @{epoch}")
+                        model.save_model(save_path)
+                        best_model = copy.deepcopy(model)
+        
     except KeyboardInterrupt:
         print(f"Training interrupted @{epoch}. Returning the best model so far.")
     
     if use_wandb and not hypertuning: wandb.finish()
-    return best_model, best_loss
+    if not hypertuning:
+        return best_model, val_loss
+    else: #return the latest validation loss
+        return val_main_loss

@@ -49,11 +49,11 @@ def test_config(trial, cfg_base, device):
     cfg["trainer"]["optimizer"] = trial.suggest_categorical("optimizer", optimizers)
     # Initialize model
     Mtrec_model = Mtrec(cfg, device=device)
-    
+    print(f"Configuration: {cfg}")
     #Train the model
     try:    
         (dataloader_train, dataloader_val) = get_dataloaders(cfg)
-        _, best_validation_loss =       train(model      = Mtrec_model, 
+        best_validation_loss =       train(model      = Mtrec_model, 
                                             dataloader_train = dataloader_train, 
                                             dataloader_val   = dataloader_val, 
                                             cfg              = cfg["trainer"],  
