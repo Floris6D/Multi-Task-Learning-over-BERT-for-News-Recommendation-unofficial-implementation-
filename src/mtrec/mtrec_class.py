@@ -6,6 +6,7 @@ from utils_training import get2device, category_loss, NER_loss, cross_product, m
 import torch
 import polars as pl
 from utils import timer
+import tqdm
 
 class Mtrec(torch.nn.Module):
     def __init__(self, cfg, device:str = "cpu"):
@@ -25,7 +26,7 @@ class Mtrec(torch.nn.Module):
         total_loss, total_main_loss, total_cat_loss, total_ner_loss = 0, 0, 0, 0 #Total loss is for backpropagation, the rest is for tracking
         self.news_encoder.train()
         self.user_encoder.train()
-        for data in dataloader_train:
+        for data in tqdm(dataloader_train):
             optimizer.zero_grad()
             # Get the data
             (user_histories, user_mask, news_tokens, news_mask), (labels, c_labels_his, c_labels_inview, ner_labels_his, ner_labels_inview), _ = get2device(data, self.device)
