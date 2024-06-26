@@ -25,8 +25,8 @@ trainer:
   skip_gs: True
 
 dataset:
-  data_dir: data
-  history_size: 50
+  data_dir: data_small
+  history_size: 12
   max_title_length: 20
   npratio: 4
   dataset_fraction: 0.02
