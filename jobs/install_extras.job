@@ -16,5 +16,5 @@ source $HOME/.bashrc
 
 # install env
 conda activate recsys
-conda install optuna
+conda install -c conda-forge optuna
 conda install peft
