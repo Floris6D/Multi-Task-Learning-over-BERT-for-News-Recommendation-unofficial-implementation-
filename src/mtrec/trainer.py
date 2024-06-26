@@ -4,6 +4,7 @@ import copy
 from gradient_surgery import PCGrad
 from utils_training import *
 import time
+from tqdm import tqdm
 
     
 def train(model, dataloader_train, dataloader_val, cfg, 
@@ -72,7 +73,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
     os.makedirs(save_path, exist_ok=True)
     if print_flag and not hypertuning: print(f"Saving models to {save_path}")
     try: # Training can be interrupted by catching KeyboardInterrupt
-        for epoch in range(cfg['epochs']):
+        for epoch in tqdm(range(cfg['epochs'])):
             if print_flag: print(f"Epoch {epoch} / {cfg['epochs']}")
             
             # Training
