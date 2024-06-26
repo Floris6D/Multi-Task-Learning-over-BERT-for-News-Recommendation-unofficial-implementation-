@@ -8,6 +8,7 @@ from mtrec_class import Mtrec
 import torch
 import yaml
 from utils import timer
+import os
 
 @timer
 def test_config(trial, cfg_base, device):
@@ -129,7 +130,8 @@ def main():
 
     # Export the best configuration
     best_cfg = merge(study.best_params, cfg)
-    with open('configs/best_config.yml', 'w') as file:
+    os.makedirs("hypertuning", exist_ok=True)
+    with open('hypertuning/best_config.yml', 'w') as file:
         yaml.dump(best_cfg, file, default_flow_style=False)
 
 if __name__ == "__main__":
