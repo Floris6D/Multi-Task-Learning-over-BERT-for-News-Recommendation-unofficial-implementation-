@@ -2,11 +2,11 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --job-name=test_fast
+#SBATCH --job-name=test_small
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=18
 #SBATCH --time=00:30:00
-#SBATCH --output=./results/slurm_logs/slurm_fast_%A.out
+#SBATCH --output=./results/slurm_logs/slurm_small_%A.out
 
 
 cd $HOME/RecSys/

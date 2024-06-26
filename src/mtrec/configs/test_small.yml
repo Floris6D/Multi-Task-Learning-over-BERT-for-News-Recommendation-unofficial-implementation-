@@ -25,7 +25,7 @@ trainer:
   batch_size: 32
   skip_ner: False
   skip_cat: False
-  skip_gs: False
+  skip_gs: True
 
 dataset:
   data_dir: data_small
