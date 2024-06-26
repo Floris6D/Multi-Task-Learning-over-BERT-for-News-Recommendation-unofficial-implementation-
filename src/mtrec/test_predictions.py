@@ -3,17 +3,22 @@ from utils import load_configuration, get_dataloaders
 from ebrec.utils._python import write_submission_file, rank_predictions_by_score
 from ebrec.evaluation import MetricEvaluator, AucScore, NdcgScore, MrrScore
 import polars as pl
-import torch
+import torch 
+import argparse
 
+# Initilize config file
+parser = argparse.ArgumentParser(description='Process some arguments.')
+parser.add_argument('--file', default='1_train_mtrec', help='Path to the configuration file')
+parser.add_argument('--run_name', default='Standard_model', help='Name of the run')
+args = parser.parse_args()
 # Load configuration, model and dataloaders
-cfg = load_configuration('test')
+cfg = load_configuration(args.file)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 Mtrec_model = Mtrec(cfg, device="cpu").to(device)
 (dataloader_train, dataloader_val) = get_dataloaders(cfg)
 
 # Get predictions
-print("Check 1")
-Mtrec_model.load_checkpoint("saved_models/run1")
+Mtrec_model.load_checkpoint("saved_models/" + args.run_name)
 predictions = Mtrec_model.predict(dataloader_val)
 
 # Evaluate predictions
