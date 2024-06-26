@@ -3,7 +3,7 @@ news_encoder:
   cfg_cat:
     num_layers: 1 #TODO: Change hyperparameters
     hidden_size: 100 #TODO: Change hyperparameters
-    output_size: 25
+    output_size: 33
   cfg_ner:
     num_layers: 1 #TODO: Change hyperparameters
     hidden_size: 100 #TODO: Change hyperparameters

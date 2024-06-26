@@ -5,7 +5,7 @@ news_encoder:
   cfg_cat:
     num_layers: 0 #Tuned
     hidden_size: 0 #Tuned
-    output_size: 25
+    output_size: 33
   cfg_ner:
     num_layers: 0 #Tuned
     hidden_size: 0 #Tuned
