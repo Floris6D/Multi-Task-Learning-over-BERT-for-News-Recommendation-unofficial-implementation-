@@ -1,11 +1,12 @@
 name_run: test_fast
 
 max_val_bs: 64
+
 news_encoder:
   cfg_cat:
     num_layers: 2
     hidden_size: 124
-    output_size: 33
+    output_size: 25
   cfg_ner:
     num_layers: 2
     hidden_size: 124
@@ -21,7 +22,7 @@ trainer:
   lr_user: 0.001
   lr_news: 0.001
   lr_bert: 0.0001
-  batch_size: 64
+  batch_size: 32
   skip_ner: False
   skip_cat: False
   skip_gs: False
