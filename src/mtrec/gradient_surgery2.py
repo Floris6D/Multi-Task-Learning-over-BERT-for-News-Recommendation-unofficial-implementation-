@@ -9,14 +9,14 @@ class PCGrad():
         # Get main gradients
         self.optimizer.zero_grad()
         main_loss.backward(retain_graph=True)
-        self.main_grads = torch.tensor([param.grad.clone() for param in self.parameters()])
+        self.main_grads = torch.tensor([param.grad.clone() for param in self.optimizer.parameters()])
 
         # Get auxiliary gradients
         self.optimizer.zero_grad()
         aux_grads_list = []
         for aux_loss in aux_losses:
             aux_loss.backward(retain_graph=True)
-            aux_grads = [param.grad.clone() for param in self.parameters()]
+            aux_grads = [param.grad.clone() for param in self.optimizer.parameters()]
             aux_grads_list.append(aux_grads)
             self.zero_grad()
         # Aggregate auxiliary gradients 
