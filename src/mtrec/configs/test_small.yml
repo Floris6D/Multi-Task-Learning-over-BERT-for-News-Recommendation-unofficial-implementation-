@@ -32,7 +32,7 @@ dataset:
   history_size: 12
   max_title_length: 20
   npratio: 4
-  dataset_fraction: 0.005
+  dataset_fraction: 0.02
   extended_NER: False
 
 model:
