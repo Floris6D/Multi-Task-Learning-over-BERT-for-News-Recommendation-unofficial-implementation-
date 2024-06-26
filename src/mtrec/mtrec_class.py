@@ -36,32 +36,40 @@ class Mtrec(torch.nn.Module):
             # MAIN task: Click prediction
             scores = scoring_function(user_embeddings, inview_news_embeddings)
             main_loss = criterion(scores, labels)
+            # Loss for backprop
             losses = [main_loss] # List of losses to backpropagate for PCGrad
-            total_loss += main_loss 
+            loss = main_loss
+            # Loss for tracking
             total_main_loss += main_loss.item()
             # AUX task: Category prediction            
             if not cfg["skip_cat"]:
                 cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
+                # Loss for backprop
                 losses.append(cat_loss)
+                loss += cat_loss
+                # Loss for tracking
                 total_cat_loss += cat_loss.item()
-                total_loss += cat_loss
+                
             # AUX task: NER 
             if not cfg["skip_ner"]:
                 ner_loss = NER_loss(inview_news_ner, history_news_ner, ner_labels_inview, ner_labels_his, inview_mask_ner, history_mask_ner)
+                # Loss for backprop
                 losses.append(ner_loss)
+                loss += ner_loss
+                # Loss for tracking
                 total_ner_loss += ner_loss.item()
-                total_loss += ner_loss
+                
             # Backpropagation
             if not cfg["skip_gs"]: 
                 optimizer.pc_backward(losses) 
             else:
-                total_loss.backward()
+                loss.backward()
             optimizer.step()
         N = len(dataloader_train.dataset)
-        total_loss       = total_loss.item()/N
         total_main_loss /= N
         total_cat_loss  /= N
         total_ner_loss  /= N
+        total_loss = total_main_loss + total_cat_loss + total_ner_loss
         if print_flag:
             print(f"Training total Loss: {total_loss}")
             print(f"Training main Loss: {total_main_loss}")
