@@ -59,6 +59,6 @@ hypertuning:
     min: 1e-06
     max: 5e-03
   optimizer: [adam, adamw, sgd]
-  n_trials: 20
+  n_trials: 2
 
 wandb: True
