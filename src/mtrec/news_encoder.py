@@ -1,6 +1,5 @@
 import torch
-from transformers import BertModel
-
+from utils import timer
 
 class NewsEncoder(torch.nn.Module):
     def __init__(self, embedding_dim, bert, cfg_cat, cfg_ner, extended_NER = False, device:str = "cpu"):
@@ -111,7 +110,7 @@ class NewsEncoder(torch.nn.Module):
         # output = torch.nn.functional.softmax(logits_reshape2, dim=3)
         # return output
 
-    
+    @timer
     def forward(self, tokens, mask = False, validation = False):
         # Reshape the tokens and mask
         bs, n, ts = tokens.shape # batch size, max inview articles, max_title length
