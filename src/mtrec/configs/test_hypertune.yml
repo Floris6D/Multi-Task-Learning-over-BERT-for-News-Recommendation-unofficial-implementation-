@@ -17,18 +17,18 @@ user_encoder:
 trainer:
   aux_scaler: 0.3
   optimizer: adam
-  epochs: 10
+  epochs: 5
   lr_user: 0 #Tuned
   lr_news: 0 #Tuned
   lr_bert: 0 #Tuned
   batch_size: 0 #Tuned
 
 dataset:
-  data_dir: data_demo
-  history_size: 15
+  data_dir: data_small
+  history_size: 10
   max_title_length: 20
   npratio: 4
-  dataset_fraction: 0.01
+  dataset_fraction: 0.005
   extended_NER: False
 
 model:
@@ -49,11 +49,11 @@ hypertuning:
   num_layers:
     min: 1
     max: 3
-  batch_size: [128, 256, 512, 1024, 2048, 4096]
+  batch_size: [16,32, 64]
   lr:
     min: 1e-06
     max: 5e-03
   optimizer: [adam, adamw, sgd]
-  n_trials: 100
+  n_trials: 20
 
 wandb: True
