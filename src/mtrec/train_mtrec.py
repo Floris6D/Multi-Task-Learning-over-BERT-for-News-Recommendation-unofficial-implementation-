@@ -10,7 +10,8 @@ def main():
     parser.add_argument('--file', default='test', help='Path to the configuration file')
     args = parser.parse_args()
     cfg = load_configuration(args.file)
-    device =  "cuda" if torch.cuda.is_available() else "cpu"
+    #device =  "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
     print(f"Device: {device}")
     print(f"Configuration: {cfg}")
     if cfg["wandb"]:
