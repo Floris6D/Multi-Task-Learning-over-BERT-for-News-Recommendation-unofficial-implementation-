@@ -20,8 +20,10 @@ def load_configuration(config_file):
 def get_dataloaders(cfg):
     tokenizer = BertTokenizer.from_pretrained(cfg['model']['pretrained_model_name'])
     loaders = []
-    for split in ['train', 'validation']:
-        batch_size = cfg["trainer"]["batch_size"] if split == 'train' else max(cfg["trainer"]["batch_size"], cfg{"max_val_bs"})
+    for split in ('train', 'validation'):
+        batch_size = cfg["trainer"]["batch_size"] 
+        if split =="validation":  
+            batch_size = max(cfg["trainer"]["batch_size"], cfg["max_val_bs"])
         loaders.append(DataLoader(
             EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split, override_eval2false= True),
             batch_size=batch_size, shuffle=True, num_workers=16, drop_last=True))
