@@ -15,7 +15,7 @@ user_encoder:
 
 trainer:
   optimizer: adam
-  epochs: 100
+  epochs: 10
   lr_user: 0.001
   lr_news: 0.001
   lr_bert: 0.00001

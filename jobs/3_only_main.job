@@ -2,11 +2,11 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --job-name=test_fast
+#SBATCH --job-name=test_2hr
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=18
-#SBATCH --time=00:10:00
-#SBATCH --output=./results/slurm_logs/slurm_fast_%A.out
+#SBATCH --time=06:00:00
+#SBATCH --output=./results/slurm_logs/slurm_ONLY_MAIN_%A.out
 
 
 cd $HOME/RecSys/
@@ -18,4 +18,4 @@ source $HOME/.bashrc
 conda activate recsys_JE
 
 # Run python
-python3 src/mtrec/train_mtrec.py --file test_fast
+python3 src/mtrec/train_mtrec.py --file 3_Only_MAIN
