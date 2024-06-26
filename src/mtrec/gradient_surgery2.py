@@ -47,3 +47,7 @@ class PCGrad():
     def step(self):
         self.optimizer.step()
         return
+    
+    def zero_grad(self): #filler function, not necesarry
+        self.optimizer.zero_grad()
+        return
