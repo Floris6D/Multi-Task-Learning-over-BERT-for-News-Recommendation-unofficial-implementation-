@@ -29,7 +29,7 @@ trainer:
 
 dataset:
   data_dir: data_small
-  history_size: 40
+  history_size: 30
   max_title_length: 25
   npratio: 4
   dataset_fraction: 0.1
