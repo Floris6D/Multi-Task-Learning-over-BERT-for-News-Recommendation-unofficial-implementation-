@@ -244,7 +244,7 @@ class EB_NeRDDataset(Dataset):
         NER_labels = []
         for i in range(len(self.df_articles)): # Loop over all the articles
             article_title = self.df_articles['title'][i]
-            tokenized_title = self.tokenizer.tokenize(article_title)
+            tokenized_title = self.tokenizer.tokenize(article_title, add_special_tokens=True)
             row_entity = [self.entity_mapping['O']] * len(tokenized_title) # Create a list with the same length as the title (0 is None)
             for ner_cluster, entity_group in zip(self.df_articles['ner_clusters'][i], self.df_articles['entity_groups'][i]): # Loop over all the NER clusters
                 # Tokenize the ner_cluster
@@ -327,7 +327,7 @@ class EB_NeRDDataset(Dataset):
         NER_labels = []
         for i in range(len(self.df_articles)): # Loop over all the articles
             article_title = self.df_articles['title'][i]
-            tokenized_article_title = self.tokenizer.tokenize(article_title)
+            tokenized_article_title = self.tokenizer.tokenize(article_title, add_special_tokens=True)
             row_entity = [0] * len(tokenized_article_title) # Create a list with the same length as the title (0 is None)
             for ner_cluster, entity_group in zip(self.df_articles['ner_clusters'][i], self.df_articles['entity_groups'][i]): # Loop over all the NER clusters
                 # Tokenize the ner_cluster
