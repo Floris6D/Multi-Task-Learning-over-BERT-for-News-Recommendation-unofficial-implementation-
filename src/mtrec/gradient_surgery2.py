@@ -1,9 +1,8 @@
 import torch
 class PCGrad():
     def __init__(self, optimizer,  aux_scaler=0.3):
-        self.optimizer, self = optimizer
+        self.optimizer = optimizer
         self.aux_scaler = aux_scaler
-        return
     
     def backward(self, main_loss, aux_losses):
         # Get main gradients
@@ -28,8 +27,6 @@ class PCGrad():
         # Combine main and aux gradients
         self.combine_grads()
         
-        
-
     def is_conflict(self): 
         return torch.dot(self.main_grads, self.aux_grads) < 0
     
