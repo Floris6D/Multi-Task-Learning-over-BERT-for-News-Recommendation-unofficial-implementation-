@@ -6,7 +6,7 @@ from utils_training import get2device, category_loss, NER_loss, cross_product, m
 import torch
 import polars as pl
 from utils import timer
-import tqdm
+from tqdm import tqdm
 
 class Mtrec(torch.nn.Module):
     def __init__(self, cfg, device:str = "cpu"):
