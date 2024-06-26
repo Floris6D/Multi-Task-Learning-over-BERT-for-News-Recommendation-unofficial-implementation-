@@ -12,9 +12,9 @@ Where code was changed is marked with a comment: # START - code for MTRec and # 
 """
 
 class PCGrad():
-    def __init__(self, optimizer, reduction='sum', lamb=0.3):
+    def __init__(self, optimizer, reduction='sum', aux_scaler=0.3):
         self._optim, self._reduction = optimizer, reduction
-        self.lamb = lamb
+        self.aux_scaler = aux_scaler
         return
 
     @property
@@ -54,7 +54,7 @@ class PCGrad():
         #### START - code for MTRec ####
         main_grad = grads[0]
         aux_grads = torch.stack(grads[1:], axis=1)
-        aux_grad = self.lamb * aux_grads.sum(dim=1)
+        aux_grad = self.aux_scaler * aux_grads.sum(dim=1)
         
         dot_ma = torch.dot(main_grad, aux_grad)
         if dot_ma< 0:

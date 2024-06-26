@@ -1,15 +1,15 @@
 import torch
 class PCGrad():
-    def __init__(self, optimizer,  lamb=0.3):
+    def __init__(self, optimizer,  aux_scaler=0.3):
         self.optimizer, self = optimizer
-        self.lamb = lamb
+        self.aux_scaler = aux_scaler
         return
     
     def backward(self, main_loss, aux_losses):
         # Get main gradients
         self.optimizer.zero_grad()
         main_loss.backward(retain_graph=True)
-        main_grads = [param.grad.clone() for param in self.parameters()]
+        self.main_grads = torch.tensor([param.grad.clone() for param in self.parameters()])
 
         # Get auxiliary gradients
         self.optimizer.zero_grad()
@@ -19,12 +19,34 @@ class PCGrad():
             aux_grads = [param.grad.clone() for param in self.parameters()]
             aux_grads_list.append(aux_grads)
             self.zero_grad()
+        # Aggregate auxiliary gradients 
         aux_grads_tensor = torch.stack(aux_grads_list)
-        aux_grads = ...
+        self.aux_grads = aux_grads_tensor.sum(dim=0)
+        # Check and resolve conflict
+        if self.is_conflict():
+            self.resolve_conflict()
+        # Combine main and aux gradients
+        self.combine_grads()
+        
+        
 
-        for i, param in enumerate(self.parameters()):
-            combined_grad = main_grads[i]
-            for aux_grads in aux_grads_list:
-                combined_grad += aux_grads[i]
-            # Assign the combined gradient to the parameter's grad
-            param.grad = combined_grad
+    def is_conflict(self): 
+        return torch.dot(self.main_grads, self.aux_grads) < 0
+    
+    def resolve_conflict(self):
+        dot_ma = torch.dot(self.main_grads, self.aux_grads)
+        mg, ag = self.main_grads, self.aux_grads
+        new_aux_grad = ag - (dot_ma / torch.dot(mg, mg)) * mg
+        new_main_grad = mg - (dot_ma / torch.dot(ag, ag)) * ag
+        self.main_grad = new_main_grad
+        self.aux_grad = new_aux_grad
+
+    def combine_grads(self):
+        combined_grads = self.main_grads + self.aux_scaler * self.aux_grads
+        for i, param in enumerate(self.optimizer.parameters()):
+                # Assign the combined gradient to the parameter's grad
+                param.grad = combined_grads[i]
+    
+    def step(self):
+        self.optimizer.step()
+        return

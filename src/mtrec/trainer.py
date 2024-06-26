@@ -53,7 +53,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
 
     # Add gradient surgery
     if not cfg["skip_gs"]: 
-        optimizer = PCGrad(optimizer, lamb = cfg["aux_scaler"])
+        optimizer = PCGrad(optimizer, aux_scaler = cfg["aux_scaler"])
 
     # Initialize to track best
     best_loss = float('inf')
