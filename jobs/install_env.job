@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+#SBATCH --job-name=env_install
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=18
+#SBATCH --time=00:45:00
+#SBATCH --output=./results/slurm_logs/slurmenv_install_%A.out
+
+
+cd $HOME/RecSys/
+
+# Source the .bashrc to initialize conda for the current session
+source $HOME/.bashrc
+
+# install env
+conda env create -f recsys_enc_JE.yaml
+conda install optuna
+conda install peft
