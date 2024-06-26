@@ -4,7 +4,8 @@ class PCGrad():
         self.optimizer = optimizer
         self.aux_scaler = aux_scaler
     
-    def pc_backward(self, main_loss, aux_losses):
+    def pc_backward(self, losses):
+        main_loss, aux_losses = losses[0], losses[1:]
         # Get main gradients
         self.optimizer.zero_grad()
         main_loss.backward(retain_graph=True)
