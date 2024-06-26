@@ -1,34 +1,39 @@
-name_run: test_hypertune
+name_run: test_hypertne
+
 max_val_bs: 64
 
 news_encoder:
   cfg_cat:
-    num_layers: 0 #Tuned
-    hidden_size: 0 #Tuned
-    output_size: 33
+    num_layers: 2
+    hidden_size: 124
+    output_size: 33 #TODO JE: make dynamic based on the dataset
   cfg_ner:
-    num_layers: 0 #Tuned
-    hidden_size: 0 #Tuned
-    output_size: 3
+    num_layers: 2
+    hidden_size: 124
+    output_size: 3 #TODO JE: make dynamic based on the dataset
+    extend_output_size: 7
 
 user_encoder:
-  hidden_size: 0 #Tuned
+  hidden_size: 128
 
 trainer:
   aux_scaler: 0.3
-  optimizer: adam
-  epochs: 5
-  lr_user: 0 #Tuned
-  lr_news: 0 #Tuned
-  lr_bert: 0 #Tuned
-  batch_size: 0 #Tuned
+  optimizer: adamw
+  epochs: 100
+  lr_user: 0.001
+  lr_news: 0.001
+  lr_bert: 0.00001
+  batch_size: 64
+  skip_ner: False
+  skip_cat: False
+  skip_gs: False
 
 dataset:
-  data_dir: data_small
-  history_size: 10
+  data_dir: data_demo
+  history_size: 15
   max_title_length: 20
   npratio: 4
-  dataset_fraction: 0.005
+  dataset_fraction: 0.01
   extended_NER: False
 
 model:
