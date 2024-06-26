@@ -29,8 +29,8 @@ trainer:
 
 dataset:
   data_dir: data_small
-  history_size: 50
-  max_title_length: 30
+  history_size: 40
+  max_title_length: 25
   npratio: 4
   dataset_fraction: 0.1
   extended_NER: False

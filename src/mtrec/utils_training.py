@@ -107,8 +107,6 @@ def category_loss(p1, p2, l1, l2):
     labels = labels[mask]
     
     # Return cross entropy loss
-    print(f"labels: {labels.shape}, predictions: {predictions.shape}")
-    print(f'labels: {labels} predictions: {predictions}')
     return nn.CrossEntropyLoss()(predictions, labels)
 
 def NER_loss(p1, p2, l1, l2, mask1, mask2): 

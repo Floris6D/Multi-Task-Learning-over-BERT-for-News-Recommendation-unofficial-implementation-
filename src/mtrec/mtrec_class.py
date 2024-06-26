@@ -43,8 +43,6 @@ class Mtrec(torch.nn.Module):
             if not cfg["skip_cat"]:
                 cat_loss = category_loss(inview_news_cat, history_news_cat, c_labels_inview, c_labels_his)
                 losses.append(cat_loss)
-                print(cat_loss)
-                print(cat_loss.item())
                 total_cat_loss += cat_loss.item()
                 total_loss += cat_loss
             # AUX task: NER 
