@@ -244,11 +244,11 @@ class EB_NeRDDataset(Dataset):
         NER_labels = []
         for i in range(len(self.df_articles)): # Loop over all the articles
             article_title = self.df_articles['title'][i]
-            tokenized_title = self.tokenizer.tokenize(article_title, add_special_tokens=True)
+            tokenized_title = self.tokenizer(article_title, add_special_tokens=True)
             row_entity = [self.entity_mapping['O']] * len(tokenized_title) # Create a list with the same length as the title (0 is None)
             for ner_cluster, entity_group in zip(self.df_articles['ner_clusters'][i], self.df_articles['entity_groups'][i]): # Loop over all the NER clusters
                 # Tokenize the ner_cluster
-                tokenized_ner_cluster = self.tokenizer.tokenize(ner_cluster)
+                tokenized_ner_cluster = self.tokenizer(ner_cluster)
                 
                 # Now find the position of the ner_cluster in the title
                 idx = find_named_entity_position(tokenized_title, tokenized_ner_cluster)
