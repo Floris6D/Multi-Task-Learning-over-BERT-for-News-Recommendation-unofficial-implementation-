@@ -1,25 +1,28 @@
 name_run: No_GS
+max_val_bs: 32
+
 news_encoder:
   cfg_cat:
-    num_layers: 1 #TODO: Change hyperparameters
-    hidden_size: 100 #TODO: Change hyperparameters
-    output_size: 33
+    num_layers: 3
+    hidden_size: 128
+    output_size: 33 
   cfg_ner:
-    num_layers: 1 #TODO: Change hyperparameters
-    hidden_size: 100 #TODO: Change hyperparameters
-    output_size: 3
+    num_layers: 3
+    hidden_size: 64
+    output_size: 3 
     extend_output_size: 7
 
 user_encoder:
-  hidden_size: 200 #TODO: Change hyperparameters
+  hidden_size: 128
 
 trainer:
+  aux_scaler: 0.3
   optimizer: adam
   epochs: 10
-  lr_user: 0.001
-  lr_news: 0.001
-  lr_bert: 0.00001
-  batch_size: 64
+  lr_user: 0.00010905 # Rounded to 5 decimal places
+  lr_news: 1.3756e-06
+  lr_bert: 5.2667e-06
+  batch_size: 32
   skip_ner: False
   skip_cat: False
   skip_gs: True

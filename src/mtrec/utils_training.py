@@ -138,7 +138,7 @@ def NER_loss(p1, p2, l1, l2, mask1, mask2):
     # Apply mask
     labels = labels[mask.bool()]
     predictions = predictions[mask.bool()]
-    # Laslty also remove the labels which are -1 #TODO: JE: This is caused by different tokenization by us and BERT
+    # Laslty also remove the labels which are -1
     mask = labels != -1
     labels = labels[mask]
     predictions = predictions[mask]

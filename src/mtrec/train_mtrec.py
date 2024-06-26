@@ -36,7 +36,6 @@ def main():
                                        use_wandb        = cfg["wandb"], 
                                        name_run         = cfg.get("name_run", "unnamed"))
     
-    #TODO: JE: Make submission file
 
 if __name__ == "__main__":
     main()
