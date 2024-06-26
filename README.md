@@ -8,14 +8,14 @@ The model in this repo is based on the paper: MTRec: Multi-Task Learning over BE
 
 # Getting started
 We advise using conda for this, then first run:
-
+```
 conda env create -f recsys_env_JE.yaml
-
+```
 On some devices, the library optuna gives issues with the environment. Therefore it is not included in the .yaml file. Optuna is only used in hypertuning.py. If you do want to install it we advise:
-
+```
 conda activate recsys
 conda install -c conda-forge optuna
-
+```
 ## Using Snellius
 All jobfiles are located in ./jobs, and a job can be run with the command:
 ```
