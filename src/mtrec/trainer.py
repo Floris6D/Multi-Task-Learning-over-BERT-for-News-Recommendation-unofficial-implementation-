@@ -96,8 +96,8 @@ def train(model, dataloader_train, dataloader_val, cfg,
                 wandb.log({"Validation Main Loss": val_main_loss, "Validation Total Loss": val_loss, 
                            "Validation Cat Loss": val_cat_loss, "Validation NER Loss": val_ner_loss})	
             # Saving best model
-            if val_loss < best_loss:   
-                best_loss = val_loss
+            if val_main_loss < best_loss:   
+                best_loss = val_main_loss
                 if not hypertuning:
                     if print_flag:           
                         print(f"Saving model @{epoch}")
