@@ -110,7 +110,6 @@ class NewsEncoder(torch.nn.Module):
         # output = torch.nn.functional.softmax(logits_reshape2, dim=3)
         # return output
 
-    @timer
     def forward(self, tokens, mask = False, validation = False):
         # Reshape the tokens and mask
         bs, n, ts = tokens.shape # batch size, max inview articles, max_title length

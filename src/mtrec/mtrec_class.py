@@ -21,7 +21,6 @@ class Mtrec(torch.nn.Module):
         
         self.device = device
     
-    @timer
     def train(self, dataloader_train, optimizer, print_flag, cfg, scoring_function:callable = cross_product, criterion:callable = main_loss):
         total_loss, total_main_loss, total_cat_loss, total_ner_loss = 0, 0, 0, 0 #Total loss is for backpropagation, the rest is for tracking
         self.news_encoder.train()
@@ -76,7 +75,6 @@ class Mtrec(torch.nn.Module):
             print(f"Training main Loss: {total_main_loss}")
         return total_loss, total_main_loss, total_cat_loss, total_ner_loss
     
-    @timer
     def validate(self, dataloader_val, print_flag, cfg, scoring_function:callable = cross_product, criterion:callable = main_loss):
         self.user_encoder.eval()
         self.news_encoder.eval()
@@ -162,7 +160,6 @@ class Mtrec(torch.nn.Module):
         )
         return pred_df
         
-    @timer
     def save_model(self, path):
         # Saving the model state
         torch.save(self.user_encoder.state_dict(), path + "/user_encoder.pth")

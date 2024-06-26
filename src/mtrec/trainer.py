@@ -70,8 +70,7 @@ def train(model, dataloader_train, dataloader_val, cfg,
         save_num += 1
     save_path = os.path.join(save_dir, f'{name_run}_run{save_num}')
     os.makedirs(save_path, exist_ok=True)
-    if print_flag: print(f"Saving models to {save_path}")
-    print(f"time before training: {time.time()-start_time}")
+    if print_flag and not hypertuning: print(f"Saving models to {save_path}")
     try: # Training can be interrupted by catching KeyboardInterrupt
         for epoch in range(cfg['epochs']):
             if print_flag: print(f"Epoch {epoch} / {cfg['epochs']}")
