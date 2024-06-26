@@ -23,11 +23,9 @@ def train(model, dataloader_train, dataloader_val, cfg,
         device (torch.device): The device to be used for training.
     """
     if use_wandb: 
-        start_time = time.time()
         import wandb
-        end_time = time.time()
-        import_time = end_time - start_time
-        print(f"Importing wandb took {import_time} seconds.")
+        if not hypertuning:
+            wandb.init(project="MTRec", config=cfg)
     # Initialize model
     user_encoder = model.user_encoder
     news_encoder = model.news_encoder
@@ -82,7 +80,8 @@ def train(model, dataloader_train, dataloader_val, cfg,
             train_loss, train_main_loss, train_cat_loss, train_ner_loss = model.train(dataloader_train, optimizer, print_flag, cfg)
 
             # Validation
-            val_loss, val_main_loss, val_cat_loss, val_ner_loss = model.validate(dataloader_val, print_flag, cfg)
+            if not hypertuning or epoch+1 == cfg["epochs"]: # Only validate at last epoch for hypertuning
+                val_loss, val_main_loss, val_cat_loss, val_ner_loss = model.validate(dataloader_val, print_flag, cfg)
             
             # Log the losses to wandb
             if use_wandb and not hypertuning:
