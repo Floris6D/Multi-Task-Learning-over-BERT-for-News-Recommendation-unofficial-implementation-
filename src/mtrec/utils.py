@@ -26,8 +26,19 @@ def get_dataloaders(cfg):
             batch_size = min(cfg["trainer"]["batch_size"], cfg["max_val_bs"])
         loaders.append(DataLoader(
             EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split, override_eval2false= True),
-            batch_size=batch_size, shuffle=True, num_workers=16, drop_last=True))
+            batch_size=batch_size, shuffle=True, num_workers=0, drop_last=True))
     return loaders
+
+def get_test_dataloader(cfg):
+    tokenizer = BertTokenizer.from_pretrained(cfg['model']['pretrained_model_name'])
+    split = 'test'
+    batch_size = cfg["trainer"]["batch_size"] 
+    if split =="validation":  
+        batch_size = min(cfg["trainer"]["batch_size"], cfg["max_val_bs"])
+    loader = DataLoader(
+        EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split, override_eval2false= True),
+        batch_size=batch_size, shuffle=True, num_workers=0, drop_last=False)
+    return loader
 
 
 def timer(func):
