@@ -38,8 +38,9 @@ class EB_NeRDDataset(Dataset):
             setattr(self, k, v)
             
         if "use_test_fraction" in kwargs:
-            self.dataset_fraction = self.testset_fraction if kwargs["use_test_fraction"] is True else self.dataset_fraction
-        self.dataset_fraction = self.dataset_fraction if split != 'test' else self.testset_fraction
+            if kwargs["use_test_fraction"] is True:
+                self.dataset_fraction = self.testset_fraction
+                self.data_dir = self.data_dir_test
             
         # Now load the data (article_id_fixed is the history, generated using truncate history)
         COLUMNS = ['user_id', 'article_id_fixed', 'article_ids_inview', 'article_ids_clicked', 'impression_id']

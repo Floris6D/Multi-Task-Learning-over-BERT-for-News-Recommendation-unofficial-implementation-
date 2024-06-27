@@ -29,6 +29,7 @@ trainer:
 
 dataset:
   data_dir: data_small
+  data_dir_test: data_large
   history_size: 12
   max_title_length: 20
   npratio: 4
