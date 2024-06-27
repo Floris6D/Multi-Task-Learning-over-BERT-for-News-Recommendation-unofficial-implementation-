@@ -33,6 +33,7 @@ dataset:
   max_title_length: 20
   npratio: 4
   dataset_fraction: 0.02
+  testset_fraction: 0.002
   extended_NER: False
 
 model:
