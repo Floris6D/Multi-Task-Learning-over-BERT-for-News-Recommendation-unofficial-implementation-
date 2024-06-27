@@ -11,6 +11,10 @@ We advise using conda for this, then first run:
 ```
 conda env create -f recsys_env_JE.yaml
 ```
+Then afterwards install via pip (not available in conda)
+```
+pip install ebrec
+```
 On some devices, the library optuna gives issues with the environment. Therefore it is not included in the .yaml file. Optuna is only used in hypertuning.py. If you do want to install it we advise:
 ```
 conda activate recsys
@@ -18,6 +22,10 @@ conda install -c conda-forge optuna
 ```
 
 # Using the code
+For hypertuning options, the src/mtrec/configs/hypertune.yml file can be edited. Hypertuning is simply done by the following line, or submitting run_hypertuning.job : 
+```
+python src/mtrec/hypertune.py
+```
 Training is done using src/mtrec/train_mtrec.py. This takes as an argument the name of a config.yml file that should be located in src/mtrec/configs. The python file defaults to the standard training .yml file if none is provided. So it will train when running:
 ```
 python src/mtrec/train_mtrec.py

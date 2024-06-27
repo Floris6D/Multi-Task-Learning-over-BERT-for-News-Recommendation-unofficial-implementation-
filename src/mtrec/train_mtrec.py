@@ -7,7 +7,7 @@ from utils import load_configuration, get_dataloaders
 def main():
     # Initialize the setup
     parser = argparse.ArgumentParser(description='Process some arguments.')
-    parser.add_argument('--file', default='test', help='Path to the configuration file')
+    parser.add_argument('--file', default='1_train_model', help='Path to the configuration file')
     args = parser.parse_args()
     cfg = load_configuration(args.file)
     device =  "cuda" if torch.cuda.is_available() else "cpu"
