@@ -14,9 +14,8 @@ cd $HOME/RecSys/
 # Source the .bashrc to initialize conda for the current session
 source $HOME/.bashrc
 
+export PATH=$HOME/miniconda3/bin:$PATH
 
-# Explicitly source the conda setup script
-source $HOME/miniconda3/etc/profile.d/conda.sh
 
 # Activate env
 conda activate recsys
