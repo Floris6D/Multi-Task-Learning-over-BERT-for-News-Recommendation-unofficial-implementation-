@@ -2,11 +2,11 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --job-name=test_small
+#SBATCH --job-name=t_oCAT
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=18
-#SBATCH --time=00:30:00
-#SBATCH --output=./results/slurm_logs/slurm_small_%A.out
+#SBATCH --time=01:00:00
+#SBATCH --output=./results/slurm_logs/slurm_testOCAT_%A.out
 
 
 cd $HOME/RecSys/
@@ -15,7 +15,7 @@ cd $HOME/RecSys/
 source $HOME/.bashrc
 
 # Activate env
-conda activate recsys_JE
+conda activate recsys
 
 # Run python
-python3 src/mtrec/train_mtrec.py --file test_small
+python3 src/mtrec/generate_metrics.py --file 5_Only_CAT

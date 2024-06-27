@@ -24,7 +24,7 @@ python src/mtrec/train_mtrec.py
 ```
 With using a job file we have:
 ```
-sbatch jobs/1_train_model.job
+sbatch jobs/train/1_train_model.job
 ```
 Different yml files have been provided for different implementation options. Testing the performance van be done with src/mtrec/test_predictions.py which needs the correct config.yml and model run name: for example:
 ```

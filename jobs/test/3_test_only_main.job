@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu
+#SBATCH --gpus=1
+#SBATCH --job-name=t_oMAIN
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=18
+#SBATCH --time=01:00:00
+#SBATCH --output=./results/slurm_logs/slurm_testOMAIN_%A.out
+
+
+cd $HOME/RecSys/
+
+# Source the .bashrc to initialize conda for the current session
+source $HOME/.bashrc
+
+# Activate env
+conda activate recsys
+
+# Run python
+python3 src/mtrec/generate_metrics.py --file 3_Only_MAIN

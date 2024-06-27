@@ -2,11 +2,12 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --job-name=train_mtrec
+#SBATCH --job-name=t_oNER
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=18
-#SBATCH --time=08:00:00
-#SBATCH --output=./results/slurm_logs/slurm_train_mtrec_%A.out
+#SBATCH --time=01:00:00
+#SBATCH --output=./results/slurm_logs/slurm_testoNER_%A.out
+
 
 cd $HOME/RecSys/
 
@@ -14,7 +15,7 @@ cd $HOME/RecSys/
 source $HOME/.bashrc
 
 # Activate env
-conda activate recsys_JE
+conda activate recsys
 
 # Run python
-python3 src/mtrec/train_mtrec.py --file best_config
+python3 src/mtrec/generate_metrics.py --file 6_Only_NER
