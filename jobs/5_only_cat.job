@@ -14,6 +14,10 @@ cd $HOME/RecSys/
 # Source the .bashrc to initialize conda for the current session
 source $HOME/.bashrc
 
+
+# Explicitly source the conda setup script
+source $HOME/miniconda3/etc/profile.d/conda.sh
+
 # Activate env
 conda activate recsys
 
