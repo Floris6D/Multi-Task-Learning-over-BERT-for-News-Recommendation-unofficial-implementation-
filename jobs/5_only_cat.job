@@ -15,7 +15,7 @@ cd $HOME/RecSys/
 source $HOME/.bashrc
 
 # Activate env
-conda activate recsys_JE
+conda activate recsys
 
 # Run python
 python3 src/mtrec/train_mtrec.py --file 5_Only_Cat
