@@ -99,23 +99,26 @@ class EB_NeRDDataset(Dataset):
                 on='user_id',
                 how='left',
             )
-        )        
+        )    
+        # Now select the columns and sample the dataset fraction
+        df_behaviors = df_behaviors.select(COLUMNS).sample(fraction=self.dataset_fraction)
+            
         
         # Now transform the data for negative sampling and add labels based on train, val, test
         if self.wu_sampling and self.eval_mode is False:
-            df_behaviors = df_behaviors.select(COLUMNS).pipe(
+            df_behaviors = df_behaviors.pipe(
                 sampling_strategy_wu2019,
                 npratio=self.npratio,
                 shuffle=True,
                 with_replacement=True,
                 seed=123,
-            ).pipe(create_binary_labels_column).sample(fraction=self.dataset_fraction)
+            ).pipe(create_binary_labels_column)
         else:
             max_length = (df_behaviors['article_ids_inview'].list.lengths().max())
             df_behaviors = df_behaviors.with_columns([
                 pl.col('article_ids_inview').apply(lambda x: pad_list(x, max_length)).alias('article_ids_inview')
             ])
-            df_behaviors = df_behaviors.select(COLUMNS).pipe(create_binary_labels_column, shuffle=False).sample(fraction=self.dataset_fraction)           
+            df_behaviors = df_behaviors.pipe(create_binary_labels_column, shuffle=False)         
 
         # Store the behaviors in the class
         self.df_behaviors = df_behaviors
