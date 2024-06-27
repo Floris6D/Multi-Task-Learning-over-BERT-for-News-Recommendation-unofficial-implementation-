@@ -31,10 +31,13 @@ class EB_NeRDDataset(Dataset):
         self.split = split
         self.wu_sampling = wu_sampling
         self.eval_mode = False if split == 'train' else True
+        
         #self.eval_mode = False # Temporarily set to False for always wu sampling
         # Contains path (see config.yaml) to the json file
         for k, v in kwargs.items():
             setattr(self, k, v)
+            
+        self.dataset_fraction = self.dataset_fraction if split != 'test' else self.testset_fraction
             
         # Now load the data (article_id_fixed is the history, generated using truncate history)
         COLUMNS = ['user_id', 'article_id_fixed', 'article_ids_inview', 'article_ids_clicked', 'impression_id']
