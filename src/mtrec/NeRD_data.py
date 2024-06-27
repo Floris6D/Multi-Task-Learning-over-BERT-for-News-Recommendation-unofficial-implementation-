@@ -37,6 +37,8 @@ class EB_NeRDDataset(Dataset):
         for k, v in kwargs.items():
             setattr(self, k, v)
             
+        if "use_test_fraction" in kwargs:
+            self.dataset_fraction = self.testset_fraction if kwargs["use_test_fraction"] is True else self.dataset_fraction
         self.dataset_fraction = self.dataset_fraction if split != 'test' else self.testset_fraction
             
         # Now load the data (article_id_fixed is the history, generated using truncate history)
@@ -90,23 +92,19 @@ class EB_NeRDDataset(Dataset):
         )
         
         # Combine the behaviors and history data
-        df_behaviors = (
-            pl.scan_parquet(os.path.join(FULL_PATH, 'behaviors.parquet'))
-            .collect()
-            .pipe(
+        df_behaviors = pl.read_parquet(os.path.join(FULL_PATH, 'behaviors.parquet'))
+            
+        # Now sample the dataset fraction and then join the history data
+        df_behaviors = df_behaviors.sample(fraction=self.dataset_fraction).pipe(
                 slice_join_dataframes,
                 df2=df_history.collect(),
                 on='user_id',
                 how='left',
-            )
-        )    
-        # Now select the columns and sample the dataset fraction
-        df_behaviors = df_behaviors.select(COLUMNS).sample(fraction=self.dataset_fraction)
-            
+            )  
         
         # Now transform the data for negative sampling and add labels based on train, val, test
         if self.wu_sampling and self.eval_mode is False:
-            df_behaviors = df_behaviors.pipe(
+            df_behaviors = df_behaviors.select(COLUMNS).pipe(
                 sampling_strategy_wu2019,
                 npratio=self.npratio,
                 shuffle=True,
@@ -118,8 +116,8 @@ class EB_NeRDDataset(Dataset):
             df_behaviors = df_behaviors.with_columns([
                 pl.col('article_ids_inview').apply(lambda x: pad_list(x, max_length)).alias('article_ids_inview')
             ])
-            df_behaviors = df_behaviors.pipe(create_binary_labels_column, shuffle=False)         
-
+            df_behaviors = df_behaviors.select(COLUMNS).pipe(create_binary_labels_column, shuffle=False)         
+        
         # Store the behaviors in the class
         self.df_behaviors = df_behaviors
         

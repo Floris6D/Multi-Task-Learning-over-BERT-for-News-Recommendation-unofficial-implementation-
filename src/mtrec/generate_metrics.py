@@ -15,10 +15,13 @@ args = parser.parse_args()
 cfg = load_configuration(args.file)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 Mtrec_model = Mtrec(cfg, device=device).to(device)
+
+print("Load the data and create the dataloader")
 dataloader_test = get_test_dataloader(cfg)
 
 # Get predictions
-Mtrec_model.load_checkpoint("saved_models/" + cfg['name_run'])
+print("Load the model and get the predictions")
+Mtrec_model.load_checkpoint("saved_models/" + cfg['name_run'] + "_run0")
 predictions = Mtrec_model.predict(dataloader_test)
 
 # Evaluate predictions
@@ -27,11 +30,12 @@ metrics = MetricEvaluator(
     predictions=predictions["scores"].to_list(),
     metric_functions=[AucScore(), MrrScore(), NdcgScore(k=5), NdcgScore(k=10)],
 )
-print(metrics.evaluate())
+evaluated_metrics = metrics.evaluate()
+print(evaluated_metrics)
 
 # Also store the metrics in a file
-with open("saved_models/" + cfg['name_run'] + f"/Metrics_{cfg['name_run']}.txt", "w") as file:
-    file.write(metrics.evaluate())
+with open("saved_models/" + cfg['name_run'] + "_run0"+ f"/Metrics_{cfg['name_run']}.txt", "w") as file:
+    file.write(evaluated_metrics.__str__())
 
 # Write submission file
 predictions = predictions.with_columns(
@@ -43,5 +47,5 @@ predictions = predictions.with_columns(
 write_submission_file(
     impression_ids=predictions['impression_id'],
     prediction_scores=predictions["ranked_scores"],
-    path="saved_models/" + cfg['name_run'] + f"/predictions_{cfg['name_run']}.txt",
+    path="saved_models/" + cfg['name_run']+ "_run0" + f"/predictions_{cfg['name_run']}.txt",
 )

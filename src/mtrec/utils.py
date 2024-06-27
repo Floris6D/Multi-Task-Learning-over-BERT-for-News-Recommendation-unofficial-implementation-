@@ -22,7 +22,7 @@ def get_dataloaders(cfg):
     loaders = []
     for split in ('train', 'validation'):
         batch_size = cfg["trainer"]["batch_size"] 
-        if split =="validation":  
+        if split in ["validation", 'test']:  
             batch_size = min(cfg["trainer"]["batch_size"], cfg["max_val_bs"])
         loaders.append(DataLoader(
             EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split, override_eval2false= True),
@@ -31,12 +31,13 @@ def get_dataloaders(cfg):
 
 def get_test_dataloader(cfg):
     tokenizer = BertTokenizer.from_pretrained(cfg['model']['pretrained_model_name'])
-    split = 'test'
+    # Can't use test set as labels are not provided
+    split = 'validation'
     batch_size = cfg["trainer"]["batch_size"] 
-    if split =="validation":  
+    if split in ["validation", "test"]:  
         batch_size = min(cfg["trainer"]["batch_size"], cfg["max_val_bs"])
     loader = DataLoader(
-        EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split, override_eval2false= True),
+        EB_NeRDDataset(tokenizer, **cfg['dataset'], split=split, override_eval2false= True, use_test_fraction = True),
         batch_size=batch_size, shuffle=True, num_workers=0, drop_last=False)
     return loader
 
