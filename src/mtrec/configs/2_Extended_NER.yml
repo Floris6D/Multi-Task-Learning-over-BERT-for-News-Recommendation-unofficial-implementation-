@@ -10,7 +10,7 @@ news_encoder:
     num_layers: 3
     hidden_size: 64
     output_size: 3 
-    extend_output_size: 7
+    extended_output_size: 7
 
 user_encoder:
   hidden_size: 128
