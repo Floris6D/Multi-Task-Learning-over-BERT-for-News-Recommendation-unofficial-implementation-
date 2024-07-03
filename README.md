@@ -1,7 +1,7 @@
 
 # Introduction
 Hello there 👋🏽
-This repo was made for the course Recommender Systems from the University of Amsterdam. Contributors are Japser Eppink, Cedrik Blommestijn and Floris Six Dijkstra.
+This repo was made for the course Recommender Systems from the University of Amsterdam. Contributors are Jasper Eppink, Cedrik Blommestijn and Floris Six Dijkstra. All code within src/mtrec is created by us.
 
 ## EBNeRD 
 The model in this repo is based on the paper: MTRec: Multi-Task Learning over BERT for News Recommendation. We provide an open source implementation of MTRec, with some additional functionalities such as automized hyperparameter tuning, and extended Named Entity Recognition labels. The dataset EBNeRD was provided by the Ekstra Bladet Recommender System repository, created for the RecSys'24 Challenge. 
