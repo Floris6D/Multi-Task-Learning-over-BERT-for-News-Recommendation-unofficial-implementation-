@@ -101,8 +101,9 @@ class Mtrec(torch.nn.Module):
                 scores = scoring_function(user_embeddings, inview_news_embeddings) # batch_size * N
                 main_loss = criterion(scores, labels).item()
                 # Metrics
-                total_loss += main_loss 
-                total_main_loss += main_loss              
+                bs = labels.shape[0] # batch size
+                total_loss += main_loss * bs
+                total_main_loss += main_loss *bs              
         N = len(dataloader_val.dataset)
         total_loss      /= N
         total_main_loss /= N

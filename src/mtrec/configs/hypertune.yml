@@ -30,10 +30,10 @@ trainer:
 
 dataset:
   data_dir: data_small
-  history_size: 12
-  max_title_length: 20
+  history_size: 20
+  max_title_length: 30
   npratio: 4
-  dataset_fraction: 0.005
+  dataset_fraction: 0.001
   testset_fraction: 0.002
   extended_NER: False
 
@@ -55,11 +55,11 @@ hypertuning:
   num_layers:
     min: 1
     max: 3
-  batch_size: [16,32]
+  batch_size: [8,16,32]
   lr:
     min: 1e-06
     max: 5e-03
   optimizer: [adam, adamw, sgd]
-  n_trials: 20
+  n_trials: 150
 
 wandb: True
